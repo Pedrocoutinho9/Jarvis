@@ -44,6 +44,7 @@ button.on{background:var(--blue)}
       <button data-s="pensando">Pensando</button>
       <button data-s="falando">Falando</button>
       <button id="go">Simular briefing</button>
+      <button id="mic">Ativar microfone</button>
     </div>
   </div>
 </div>
@@ -107,26 +108,25 @@ function initAudio(){
 async function fetchAudio(text){
   try {
     const r = await fetch('/api/tts?text=' + encodeURIComponent(text));
-    if (!r.ok) throw new Error(r.status);
-    return URL.createObjectURL(await r.blob());
-  } catch (e) { return null; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const ab = await r.arrayBuffer();
+    return await new Promise((ok, fail) => actx.decodeAudioData(ab, ok, fail));
+  } catch (e) { console.error('TTS falhou:', e); return null; }
 }
-function play(url){
+function play(buffer){ // toca pelo AudioContext: não depende de clique a cada fala
   return new Promise(res => {
-    const a = new Audio(url);
-    const src = actx.createMediaElementSource(a);
-    src.connect(analyser);
-    const done = () => { live = false; src.disconnect(); res(); };
-    a.onended = a.onerror = done;
-    live = true;
-    a.play().catch(done);
+    const src = actx.createBufferSource();
+    src.buffer = buffer; src.connect(analyser);
+    src.onended = () => { live = false; res(); };
+    live = true; src.start();
   });
 }
 
 let running = false;
-document.getElementById('go').onclick = async () => {
+async function runBriefing(){
   if (running) return; running = true;
-  initAudio(); // precisa nascer dentro do clique
+  pauseRec(); // não deixa o Jarvis ouvir a própria voz
+  initAudio(); await actx.resume();
   const cap = document.getElementById('caption');
   setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...';
   await load();
@@ -134,11 +134,57 @@ document.getElementById('go').onclick = async () => {
   for (let i = 0; i < DATA.length; i++){
     const d = DATA[i];
     setState('falando'); focusCard(d.id); cap.textContent = d.say;
-    if (urls[i]) await play(urls[i]);
-    else await wait(2800 + d.say.length * 30); // sem áudio: só legenda
+    try {
+      if (!urls[i]) throw new Error('sem áudio');
+      await play(urls[i]);
+    } catch (e) { live = false; await wait(2800 + d.say.length * 30); } // sem áudio: só legenda
     await wait(400);
   }
-  setState('espera'); cap.textContent = ''; running = false;
+  cap.textContent = ''; running = false;
+  resumeRec();
+  if (!listening) setState('espera');
+}
+document.getElementById('go').onclick = () => { initAudio(); runBriefing(); };
+
+// ---- Ouvir: reconhecimento de voz do navegador (Chrome ou Safari)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const capEl = document.getElementById('caption'), micBtn = document.getElementById('mic');
+let rec = null, listening = false, paused = false;
+function startRec(){
+  rec = new SR();
+  rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
+  rec.onresult = e => {
+    let text = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) text += e.results[i][0].transcript;
+    if (running) return;
+    capEl.textContent = text;
+    if (/bom dia|jarvis/i.test(text)) runBriefing();
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      stopListening();
+      capEl.textContent = 'Permita o uso do microfone nas configurações do navegador.';
+    }
+  };
+  rec.onend = () => { if (listening && !paused) { try { rec.start(); } catch (e) {} } };
+  try { rec.start(); } catch (e) {}
+}
+function pauseRec(){ paused = true; if (rec) try { rec.stop(); } catch (e) {} }
+function resumeRec(){ paused = false; if (listening) { startRec(); setState('ouvindo'); } }
+function stopListening(){
+  listening = false; paused = false;
+  if (rec) try { rec.stop(); } catch (e) {}
+  micBtn.textContent = 'Ativar microfone'; micBtn.classList.remove('on');
+  if (!running) setState('espera');
+}
+micBtn.onclick = () => {
+  if (listening) return stopListening();
+  if (!SR){ capEl.textContent = 'Este navegador não suporta reconhecimento de voz. Use Chrome ou Safari.'; return; }
+  initAudio(); // libera o áudio enquanto há um clique do usuário
+  listening = true;
+  micBtn.textContent = 'Desativar microfone'; micBtn.classList.add('on');
+  capEl.textContent = 'Diga "bom dia"';
+  setState('ouvindo'); startRec();
 };
 
 // ---- Orbe (canvas)
