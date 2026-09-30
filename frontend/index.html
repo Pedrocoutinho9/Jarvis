@@ -48,26 +48,33 @@ button.on{background:var(--blue)}
   </div>
 </div>
 <script>
-// ---- Dados de exemplo. No passo 3 isto vira: fetch('/api/briefing')
-const DATA = [
- {id:'agenda', t:'Agenda livre', k:'Hoje', html:'<p>Nenhum compromisso registrado.</p>', say:'A agenda de hoje está livre, senhor.'},
- {id:'email', t:'Pedem sua atenção', k:'E-mails', html:'<p><b>5</b> de 20 mensagens precisam de ação.</p><ul><li>Banco: fatura próxima do vencimento</li><li>Serviço de pagamentos: atualizar dados até 22/10</li></ul>', say:'Há 20 e-mails na caixa, dos quais cinco merecem atenção.'},
- {id:'clima', t:'Recife', k:'Clima', html:'<p class="big">27°</p><p>Mín 23° · Máx 29° · chuva 40%</p>', say:'Em Recife, a máxima de hoje será de 29 graus.'},
- {id:'n1', t:'Tecnologia', k:'Notícias', html:'<p>Manchete de exemplo sobre tecnologia.</p>', say:'Nas notícias de tecnologia, uma manchete de exemplo.'},
- {id:'n2', t:'Política', k:'Notícias', html:'<p>Manchete de exemplo sobre política.</p>', say:'Na política, outra manchete de exemplo.'}
-];
+// ---- Dados vêm do backend
+let DATA = [];
 const LABEL = {espera:'Em espera', ouvindo:'Ouvindo', pensando:'Pensando', falando:'Falando'};
 let state = 'espera', amp = 0.04, target = 0.04, speed = 0.15;
 
 // ---- Cards
 const cardsEl = document.getElementById('cards');
-DATA.forEach(d => {
-  const el = document.createElement('article');
-  el.className = 'card'; el.id = 'c-' + d.id; el.tabIndex = 0;
-  el.innerHTML = `<small>${d.k}</small><h3>${d.t}</h3>${d.html}`;
-  el.onclick = () => focusCard(d.id);
-  cardsEl.appendChild(el);
-});
+function renderCards(){
+  cardsEl.innerHTML = '';
+  DATA.forEach(d => {
+    const el = document.createElement('article');
+    el.className = 'card'; el.id = 'c-' + d.id; el.tabIndex = 0;
+    el.innerHTML = `<small>${d.k}</small><h3>${d.t}</h3>${d.html}`;
+    el.onclick = () => focusCard(d.id);
+    cardsEl.appendChild(el);
+  });
+}
+async function load(){
+  try {
+    const r = await fetch('/api/briefing');
+    DATA = await r.json();
+  } catch (e) {
+    DATA = [{id:'erro', k:'Erro', t:'Sem conexão com o backend', html:'<p>Inicie o servidor com uvicorn.</p>', say:'Não consegui falar com o servidor.'}];
+  }
+  renderCards();
+}
+load();
 function focusCard(id){
   document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.id === 'c-' + id));
   const c = document.getElementById('c-' + id);
@@ -91,7 +98,7 @@ let running = false;
 document.getElementById('go').onclick = async () => {
   if (running) return; running = true;
   const cap = document.getElementById('caption');
-  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...'; await wait(1800);
+  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...'; await Promise.all([load(), wait(1800)]);
   for (const d of DATA){
     setState('falando'); focusCard(d.id); cap.textContent = d.say;
     await wait(2800 + d.say.length * 30);
