@@ -1,5 +1,6 @@
 import html
 import os
+import re
 from pathlib import Path
 
 import edge_tts
@@ -27,12 +28,32 @@ FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 app = FastAPI(title="Jarvis")
 
 
+def _wicon(code: int) -> str:
+    if code in (0, 1):
+        return "sun"
+    if code in (2, 3, 45, 48):
+        return "cloud"
+    return "rain"
+
+
+def _image(entry):
+    for key in ("media_content", "media_thumbnail"):
+        for m in entry.get(key) or []:
+            if str(m.get("url", "")).startswith("http"):
+                return m["url"]
+    for link in entry.get("links", []):
+        if link.get("type", "").startswith("image") and link.get("href", "").startswith("http"):
+            return link["href"]
+    m = re.search(r'<img[^>]+src="(https?://[^"]+)"', entry.get("summary", "") or "")
+    return m.group(1) if m else None
+
+
 async def weather_card() -> dict:
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": LAT,
         "longitude": LON,
-        "current": "temperature_2m,apparent_temperature,wind_speed_10m",
+        "current": "temperature_2m,apparent_temperature,wind_speed_10m,weather_code",
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
         "timezone": "auto",
         "forecast_days": 1,
@@ -49,6 +70,7 @@ async def weather_card() -> dict:
         temp = round(now["temperature_2m"])
         return {
             "id": "clima",
+            "icon": _wicon(now["weather_code"]),
             "k": "Clima",
             "t": CITY,
             "html": (
@@ -60,7 +82,7 @@ async def weather_card() -> dict:
             "say": f"Em {CITY}, agora fazem {temp} graus. A máxima será de {tmax} e a chance de chuva é de {rain} por cento.",
         }
     except Exception as e:
-        return {"id": "clima", "k": "Clima", "t": CITY,
+        return {"id": "clima", "icon": "cloud", "k": "Clima", "t": CITY,
                 "html": "<p>Não foi possível obter o clima agora.</p>",
                 "say": "Não consegui obter a previsão do tempo."}
 
@@ -77,25 +99,27 @@ async def news_card(topic: str, url: str) -> dict:
         lis = "".join(f"<li>{html.escape(i.title)}</li>" for i in items)
         return {
             "id": f"news-{topic.lower()}",
+            "icon": "news",
+            "image": _image(items[0]),
             "k": "Notícias",
             "t": topic,
             "html": f"<ul>{lis}</ul>",
             "say": f"Nas notícias de {topic.lower()}: {items[0].title}.",
         }
     except Exception:
-        return {"id": f"news-{topic.lower()}", "k": "Notícias", "t": topic,
+        return {"id": f"news-{topic.lower()}", "icon": "news", "k": "Notícias", "t": topic,
                 "html": "<p>Feed indisponível no momento.</p>",
                 "say": f"Não consegui carregar as notícias de {topic.lower()}."}
 
 
 def agenda_card() -> dict:  # placeholder até o passo do Google OAuth
-    return {"id": "agenda", "k": "Hoje", "t": "Agenda livre",
+    return {"id": "agenda", "icon": "calendar", "k": "Hoje", "t": "Agenda livre",
             "html": "<p>Nenhum compromisso registrado.</p>",
             "say": "A agenda de hoje está livre, senhor."}
 
 
 def email_card() -> dict:  # placeholder até o passo do Gmail
-    return {"id": "email", "k": "E-mails", "t": "Pedem sua atenção",
+    return {"id": "email", "icon": "mail", "k": "E-mails", "t": "Pedem sua atenção",
             "html": "<p>Dados de exemplo. Conexão com o Gmail vem depois.</p>",
             "say": "A leitura de e-mails ainda não foi conectada."}
 

@@ -6,64 +6,95 @@
 <title>Jarvis</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap">
 <style>
-:root{--bg:#030a1f;--blue:#2f7bff;--cyan:#6fd8ff;--text:#e6f0ff;--dim:#8aa4d6;--panel:rgba(20,50,130,.35)}
+:root{--bg:#02060f;--blue:#2f7bff;--cyan:#7fdcff;--text:#dbe8ff;--dim:#7f97c4;--panel:rgba(9,20,46,.78);--line:rgba(127,220,255,.18)}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
-body{background:radial-gradient(ellipse at 50% 45%,#0a2260 0%,var(--bg) 70%);color:var(--text);font-family:"Chakra Petch",system-ui,sans-serif;overflow:hidden;
-background-image:linear-gradient(rgba(47,123,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(47,123,255,.08) 1px,transparent 1px);background-size:48px 48px}
-#stage{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto;justify-items:center;padding:20px}
-#status{font-size:1.1rem;letter-spacing:.4em;color:var(--cyan);text-indent:.4em}
-#orb{width:min(46vh,80vw);height:min(46vh,80vw);align-self:center}
-#caption{min-height:3.2em;max-width:760px;text-align:center;font-size:clamp(1.1rem,2.4vw,1.7rem);font-weight:600;text-shadow:0 2px 12px #000}
-#cards{display:flex;gap:14px;padding:16px 4px;max-width:100%;overflow-x:auto;align-items:flex-end}
-.card{flex:0 0 220px;background:var(--panel);border:1px solid rgba(111,216,255,.25);border-radius:10px;padding:14px;backdrop-filter:blur(6px);
-cursor:pointer;opacity:.6;transition:transform .35s,opacity .35s,flex-basis .35s,border-color .35s}
-.card h3{font-size:1rem;margin:2px 0 8px}
-.card small{color:var(--dim);font-size:.75rem}
-.card p,.card li{font-size:.82rem;line-height:1.35;color:var(--text)}
-.card ul{padding-left:16px}
-.card .big{font-size:2rem;font-weight:600}
-.card.active{opacity:1;flex-basis:320px;transform:translateY(-14px) scale(1.04);border-color:var(--cyan);box-shadow:0 0 28px rgba(47,123,255,.6)}
-#bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-button{background:transparent;color:var(--text);border:1px solid var(--blue);border-radius:6px;padding:8px 14px;font:inherit;cursor:pointer}
-button:hover,button:focus-visible{background:var(--blue);outline:2px solid var(--cyan);outline-offset:2px}
+body{background:radial-gradient(ellipse 65% 55% at 50% 36%,#08173d 0%,var(--bg) 72%);color:var(--text);font-family:"Chakra Petch",system-ui,sans-serif;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+background-image:linear-gradient(rgba(127,220,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(127,220,255,.035) 1px,transparent 1px);background-size:56px 56px;
+-webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%)}
+#stage{position:fixed;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;justify-items:center;padding:22px 20px 18px;overflow:auto}
+#status{font-size:.95rem;letter-spacing:.3em;text-indent:.3em;color:var(--cyan);opacity:.85}
+#orb{width:min(40vh,70vw);height:min(40vh,70vw);align-self:center}
+#feature{width:100%;min-height:32vh;display:flex;justify-content:center;align-items:flex-start}
+#caption{min-height:2.6em;max-width:780px;text-align:center;font-size:clamp(1rem,2vw,1.35rem);padding-top:10px}
+
+.feature{width:min(560px,90vw);background:var(--panel);border:1px solid rgba(127,220,255,.3);border-radius:16px;padding:22px 24px;box-shadow:0 0 60px rgba(47,123,255,.2);backdrop-filter:blur(10px)}
+.f-head{display:flex;align-items:center;gap:10px;color:var(--cyan);margin-bottom:6px}
+.f-head .ico{width:28px;height:28px}
+.f-head small{font-size:.85rem;color:var(--dim)}
+.feature h2{font-size:1.6rem;margin-bottom:12px}
+.feature img{display:block;width:100%;max-height:18vh;object-fit:cover;border-radius:10px;margin-bottom:12px}
+.f-body{font-size:1.05rem;line-height:1.5}
+.f-body ul{padding-left:18px}.f-body li{margin-bottom:6px}
+.f-body .big{font-size:3.4rem;font-weight:600;line-height:1.1}
+
+.dock{position:absolute;top:50%;transform:translateY(-50%);width:250px;display:flex;flex-direction:column;gap:12px}
+#dockL{left:28px}#dockR{right:28px}
+.slot{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;opacity:0;transition:opacity .45s;cursor:pointer}
+.slot.shown{opacity:1}
+.slot:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.slot .ico{flex:none;width:30px;height:30px;color:var(--cyan)}
+.slot small{color:var(--dim);font-size:.72rem}
+.slot h3{font-size:.95rem;margin:1px 0 3px}
+.slot p{font-size:.8rem;line-height:1.35;color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+svg{width:100%;height:100%}
+
+#bar{position:fixed;top:14px;right:16px;display:flex;gap:8px;z-index:5}
+button{background:rgba(9,20,46,.6);color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;font-size:.8rem;cursor:pointer}
+button:hover,button:focus-visible,button.on{color:var(--text);border-color:var(--blue);outline:none}
 button.on{background:var(--blue)}
-@media (prefers-reduced-motion:reduce){.card{transition:none}}
+
+@media (max-width:1100px){.dock{position:static;transform:none;width:100%;flex-direction:row;overflow-x:auto}.slot{flex:0 0 230px}}
+@media (prefers-reduced-motion:reduce){.slot{transition:none}}
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="status">Em espera</div>
   <canvas id="orb"></canvas>
-  <div>
-    <div id="caption" aria-live="polite"></div>
-    <div id="cards"></div>
-    <div id="bar">
-      <button data-s="espera">Em espera</button>
-      <button data-s="ouvindo">Ouvindo</button>
-      <button data-s="pensando">Pensando</button>
-      <button data-s="falando">Falando</button>
-      <button id="go">Simular briefing</button>
-      <button id="mic">Ativar microfone</button>
-    </div>
-  </div>
+  <div id="feature"></div>
+  <div id="caption" aria-live="polite"></div>
+  <aside id="dockL" class="dock"></aside>
+  <aside id="dockR" class="dock"></aside>
+</div>
+<div id="bar">
+  <button id="go">Simular briefing</button>
+  <button id="mic">Ativar microfone</button>
 </div>
 <script>
-// ---- Dados vêm do backend
-let DATA = [];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const capEl = $('caption'), micBtn = $('mic');
 const LABEL = {espera:'Em espera', ouvindo:'Ouvindo', pensando:'Pensando', falando:'Falando'};
 let state = 'espera', amp = 0.04, target = 0.04, speed = 0.15;
 
-// ---- Cards
-const cardsEl = document.getElementById('cards');
-function renderCards(){
-  cardsEl.innerHTML = '';
+// ---- Ícones e helpers
+const ICONS = {
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  cloud:'<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5 4.75 4.75 0 0 1 17.5 18z"/>',
+  rain:'<path d="M7 15a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 5.5 4.75 4.75 0 0 1 17.5 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+  news:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>'
+};
+const ico = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ICONS.news}</svg>`;
+function mk(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const plain = html => { const t = document.createElement('div'); t.innerHTML = html; return t.textContent.trim(); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- Dados e painéis laterais (começam escondidos; cada card "pousa" quando é falado)
+let DATA = [];
+function renderSlots(){
+  $('dockL').innerHTML = ''; $('dockR').innerHTML = '';
   DATA.forEach(d => {
-    const el = document.createElement('article');
-    el.className = 'card'; el.id = 'c-' + d.id; el.tabIndex = 0;
-    el.innerHTML = `<small>${d.k}</small><h3>${d.t}</h3>${d.html}`;
-    el.onclick = () => focusCard(d.id);
-    cardsEl.appendChild(el);
+    const el = mk('article', 'slot'); el.id = 's-' + d.id; el.tabIndex = 0;
+    const i = mk('span', 'ico'); i.innerHTML = ico(d.icon);
+    const box = mk('div'); box.append(mk('small', '', d.k), mk('h3', '', d.t), mk('p', '', plain(d.html)));
+    el.append(i, box);
+    el.onclick = () => peek(d);
+    el.onkeydown = e => { if (e.key === 'Enter') peek(d); };
+    $(d.k === 'Notícias' ? 'dockR' : 'dockL').appendChild(el);
   });
 }
 async function load(){
@@ -71,32 +102,65 @@ async function load(){
     const r = await fetch('/api/briefing');
     DATA = await r.json();
   } catch (e) {
-    DATA = [{id:'erro', k:'Erro', t:'Sem conexão com o backend', html:'<p>Inicie o servidor com uvicorn.</p>', say:'Não consegui falar com o servidor.'}];
+    DATA = [{id:'erro', icon:'news', k:'Erro', t:'Sem conexão com o backend', html:'<p>Inicie o servidor com uvicorn.</p>', say:'Não consegui falar com o servidor.'}];
   }
-  renderCards();
+  renderSlots();
 }
 load();
-function focusCard(id){
-  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.id === 'c-' + id));
-  const c = document.getElementById('c-' + id);
-  if (c) c.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+
+// ---- Card em destaque: aparece na frente do orbe e depois voa para o painel
+function buildFeature(d){
+  const f = mk('div', 'feature');
+  const head = mk('div', 'f-head');
+  const i = mk('span', 'ico'); i.innerHTML = ico(d.icon);
+  head.append(i, mk('small', '', d.k));
+  f.append(head, mk('h2', '', d.t));
+  if (d.image){
+    const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer';
+    im.onerror = () => im.remove(); im.src = d.image; f.appendChild(im);
+  }
+  const body = mk('div', 'f-body'); body.innerHTML = d.html; f.appendChild(body);
+  return f;
+}
+function showFeature(d){
+  const f = buildFeature(d);
+  $('feature').appendChild(f);
+  f.animate([{opacity:0, transform:'translateY(28px) scale(.9)'}, {opacity:1, transform:'none'}],
+            {duration: reduce ? 1 : 480, easing:'cubic-bezier(.2,.8,.2,1)', fill:'backwards'});
+  return f;
+}
+async function dockFeature(f, d){
+  const slot = $('s-' + d.id);
+  if (!slot){ f.remove(); return; }
+  const a = f.getBoundingClientRect(), b = slot.getBoundingClientRect();
+  f.style.transformOrigin = '0 0';
+  const anim = f.animate([
+    {transform:'none', opacity:1},
+    {opacity:1, offset:.55},
+    {transform:`translate(${b.left - a.left}px,${b.top - a.top}px) scale(${b.width / a.width},${b.height / a.height})`, opacity:0}
+  ], {duration: reduce ? 1 : 700, easing:'cubic-bezier(.6,0,.2,1)', fill:'forwards'});
+  setTimeout(() => slot.classList.add('shown'), reduce ? 0 : 420);
+  try { await anim.finished; } catch (e) {}
+  f.remove();
+}
+let peeking = false;
+async function peek(d){ // clicar num painel mostra o card de novo
+  if (running || peeking) return; peeking = true;
+  const slot = $('s-' + d.id); slot.classList.remove('shown');
+  const f = showFeature(d); await wait(4000); await dockFeature(f, d);
+  peeking = false;
 }
 
 // ---- Estados
 function setState(s){
   state = s;
-  document.getElementById('status').textContent = LABEL[s];
-  document.querySelectorAll('#bar [data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  $('status').textContent = LABEL[s];
   speed = {espera:.15, ouvindo:.3, pensando:1.2, falando:.4}[s];
   target = {espera:.04, ouvindo:.1, pensando:.08, falando:.16}[s];
 }
-document.querySelectorAll('#bar [data-s]').forEach(b => b.onclick = () => setState(b.dataset.s));
 setState('espera');
 
-// ---- Briefing simulado (depois: áudio real do TTS)
-const wait = ms => new Promise(r => setTimeout(r, ms));
-
-// ---- Áudio: toca a voz e mede o volume para animar o orbe
+// ---- Áudio: toca a voz pelo AudioContext e mede o volume para animar o orbe
 let actx, analyser, buf, live = false;
 function initAudio(){
   if (actx) { actx.resume(); return; }
@@ -113,7 +177,7 @@ async function fetchAudio(text){
     return await new Promise((ok, fail) => actx.decodeAudioData(ab, ok, fail));
   } catch (e) { console.error('TTS falhou:', e); return null; }
 }
-function play(buffer){ // toca pelo AudioContext: não depende de clique a cada fala
+function play(buffer){
   return new Promise(res => {
     const src = actx.createBufferSource();
     src.buffer = buffer; src.connect(analyser);
@@ -122,33 +186,34 @@ function play(buffer){ // toca pelo AudioContext: não depende de clique a cada 
   });
 }
 
+// ---- Briefing
 let running = false;
 async function runBriefing(){
-  if (running) return; running = true;
+  if (running || peeking) return; running = true;
   pauseRec(); // não deixa o Jarvis ouvir a própria voz
   initAudio(); await actx.resume();
-  const cap = document.getElementById('caption');
-  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...';
+  setState('pensando'); capEl.textContent = 'Preparando seu briefing...';
   await load();
   const urls = await Promise.all(DATA.map(d => fetchAudio(d.say))); // gera todas as falas enquanto "pensa"
   for (let i = 0; i < DATA.length; i++){
     const d = DATA[i];
-    setState('falando'); focusCard(d.id); cap.textContent = d.say;
+    setState('falando'); capEl.textContent = d.say;
+    const f = showFeature(d);
     try {
       if (!urls[i]) throw new Error('sem áudio');
       await play(urls[i]);
     } catch (e) { live = false; await wait(2800 + d.say.length * 30); } // sem áudio: só legenda
-    await wait(400);
+    await wait(350);
+    await dockFeature(f, d);
   }
-  cap.textContent = ''; running = false;
+  capEl.textContent = ''; running = false;
   resumeRec();
   if (!listening) setState('espera');
 }
-document.getElementById('go').onclick = () => { initAudio(); runBriefing(); };
+$('go').onclick = () => { initAudio(); runBriefing(); };
 
 // ---- Ouvir: reconhecimento de voz do navegador (Chrome ou Safari)
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const capEl = document.getElementById('caption'), micBtn = document.getElementById('mic');
 let rec = null, listening = false, paused = false;
 function startRec(){
   rec = new SR();
@@ -188,8 +253,7 @@ micBtn.onclick = () => {
 };
 
 // ---- Orbe (canvas)
-const cv = document.getElementById('orb'), ctx = cv.getContext('2d');
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv = $('orb'), ctx = cv.getContext('2d');
 const RINGS = Array.from({length:9}, (_, i) => ({ph:Math.random()*6.28, tilt:Math.random()*3.14, k:2+Math.floor(Math.random()*4), r:.62+Math.random()*.3, w:i%3+1}));
 let t = 0, env = 0;
 function resize(){ const d = devicePixelRatio || 1, s = cv.clientWidth; cv.width = cv.height = s * d; ctx.setTransform(d,0,0,d,0,0); }
