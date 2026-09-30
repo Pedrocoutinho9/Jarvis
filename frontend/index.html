@@ -94,14 +94,49 @@ setState('espera');
 
 // ---- Briefing simulado (depois: áudio real do TTS)
 const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- Áudio: toca a voz e mede o volume para animar o orbe
+let actx, analyser, buf, live = false;
+function initAudio(){
+  if (actx) { actx.resume(); return; }
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = actx.createAnalyser(); analyser.fftSize = 256;
+  buf = new Uint8Array(analyser.fftSize);
+  analyser.connect(actx.destination);
+}
+async function fetchAudio(text){
+  try {
+    const r = await fetch('/api/tts?text=' + encodeURIComponent(text));
+    if (!r.ok) throw new Error(r.status);
+    return URL.createObjectURL(await r.blob());
+  } catch (e) { return null; }
+}
+function play(url){
+  return new Promise(res => {
+    const a = new Audio(url);
+    const src = actx.createMediaElementSource(a);
+    src.connect(analyser);
+    const done = () => { live = false; src.disconnect(); res(); };
+    a.onended = a.onerror = done;
+    live = true;
+    a.play().catch(done);
+  });
+}
+
 let running = false;
 document.getElementById('go').onclick = async () => {
   if (running) return; running = true;
+  initAudio(); // precisa nascer dentro do clique
   const cap = document.getElementById('caption');
-  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...'; await Promise.all([load(), wait(1800)]);
-  for (const d of DATA){
+  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...';
+  await load();
+  const urls = await Promise.all(DATA.map(d => fetchAudio(d.say))); // gera todas as falas enquanto "pensa"
+  for (let i = 0; i < DATA.length; i++){
+    const d = DATA[i];
     setState('falando'); focusCard(d.id); cap.textContent = d.say;
-    await wait(2800 + d.say.length * 30);
+    if (urls[i]) await play(urls[i]);
+    else await wait(2800 + d.say.length * 30); // sem áudio: só legenda
+    await wait(400);
   }
   setState('espera'); cap.textContent = ''; running = false;
 };
@@ -116,7 +151,11 @@ addEventListener('resize', resize); resize();
 function frame(){
   const s = cv.clientWidth, c = s / 2;
   t += (reduce ? 0 : speed) * 0.016;
-  if (state === 'falando' && Math.random() < .12) env = Math.random();
+  if (live) {
+    analyser.getByteTimeDomainData(buf);
+    let sum = 0; for (const v of buf){ const x = (v - 128) / 128; sum += x * x; }
+    env = Math.min(1, Math.sqrt(sum / buf.length) * 4);
+  } else if (state === 'falando' && Math.random() < .12) env = Math.random();
   amp += (target * (state === 'falando' ? .5 + env : 1) - amp) * .08;
   ctx.clearRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'lighter';

@@ -2,11 +2,12 @@ import html
 import os
 from pathlib import Path
 
+import edge_tts
 import feedparser
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
@@ -14,6 +15,8 @@ load_dotenv()
 CITY = os.getenv("CITY_NAME", "Recife")
 LAT = float(os.getenv("LAT", "-8.05"))
 LON = float(os.getenv("LON", "-34.88"))
+
+VOICE = os.getenv("TTS_VOICE", "pt-BR-AntonioNeural")
 
 FEEDS = {
     "Tecnologia": "https://g1.globo.com/rss/g1/tecnologia/",
@@ -103,6 +106,20 @@ async def briefing():
     for topic, url in FEEDS.items():
         cards.append(await news_card(topic, url))
     return cards
+
+
+@app.get("/api/tts")
+async def tts(text: str = Query(..., max_length=600)):
+    audio = b""
+    try:
+        async for chunk in edge_tts.Communicate(text, VOICE).stream():
+            if chunk["type"] == "audio":
+                audio += chunk["data"]
+    except Exception:
+        raise HTTPException(502, "Falha ao gerar áudio")
+    if not audio:
+        raise HTTPException(502, "Áudio vazio")
+    return Response(audio, media_type="audio/mpeg")
 
 
 app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
