@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap">
+<style>
+:root{--bg:#030a1f;--blue:#2f7bff;--cyan:#6fd8ff;--text:#e6f0ff;--dim:#8aa4d6;--panel:rgba(20,50,130,.35)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:radial-gradient(ellipse at 50% 45%,#0a2260 0%,var(--bg) 70%);color:var(--text);font-family:"Chakra Petch",system-ui,sans-serif;overflow:hidden;
+background-image:linear-gradient(rgba(47,123,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(47,123,255,.08) 1px,transparent 1px);background-size:48px 48px}
+#stage{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto;justify-items:center;padding:20px}
+#status{font-size:1.1rem;letter-spacing:.4em;color:var(--cyan);text-indent:.4em}
+#orb{width:min(46vh,80vw);height:min(46vh,80vw);align-self:center}
+#caption{min-height:3.2em;max-width:760px;text-align:center;font-size:clamp(1.1rem,2.4vw,1.7rem);font-weight:600;text-shadow:0 2px 12px #000}
+#cards{display:flex;gap:14px;padding:16px 4px;max-width:100%;overflow-x:auto;align-items:flex-end}
+.card{flex:0 0 220px;background:var(--panel);border:1px solid rgba(111,216,255,.25);border-radius:10px;padding:14px;backdrop-filter:blur(6px);
+cursor:pointer;opacity:.6;transition:transform .35s,opacity .35s,flex-basis .35s,border-color .35s}
+.card h3{font-size:1rem;margin:2px 0 8px}
+.card small{color:var(--dim);font-size:.75rem}
+.card p,.card li{font-size:.82rem;line-height:1.35;color:var(--text)}
+.card ul{padding-left:16px}
+.card .big{font-size:2rem;font-weight:600}
+.card.active{opacity:1;flex-basis:320px;transform:translateY(-14px) scale(1.04);border-color:var(--cyan);box-shadow:0 0 28px rgba(47,123,255,.6)}
+#bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{background:transparent;color:var(--text);border:1px solid var(--blue);border-radius:6px;padding:8px 14px;font:inherit;cursor:pointer}
+button:hover,button:focus-visible{background:var(--blue);outline:2px solid var(--cyan);outline-offset:2px}
+button.on{background:var(--blue)}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="status">Em espera</div>
+  <canvas id="orb"></canvas>
+  <div>
+    <div id="caption" aria-live="polite"></div>
+    <div id="cards"></div>
+    <div id="bar">
+      <button data-s="espera">Em espera</button>
+      <button data-s="ouvindo">Ouvindo</button>
+      <button data-s="pensando">Pensando</button>
+      <button data-s="falando">Falando</button>
+      <button id="go">Simular briefing</button>
+    </div>
+  </div>
+</div>
+<script>
+// ---- Dados de exemplo. No passo 3 isto vira: fetch('/api/briefing')
+const DATA = [
+ {id:'agenda', t:'Agenda livre', k:'Hoje', html:'<p>Nenhum compromisso registrado.</p>', say:'A agenda de hoje está livre, senhor.'},
+ {id:'email', t:'Pedem sua atenção', k:'E-mails', html:'<p><b>5</b> de 20 mensagens precisam de ação.</p><ul><li>Banco: fatura próxima do vencimento</li><li>Serviço de pagamentos: atualizar dados até 22/10</li></ul>', say:'Há 20 e-mails na caixa, dos quais cinco merecem atenção.'},
+ {id:'clima', t:'Recife', k:'Clima', html:'<p class="big">27°</p><p>Mín 23° · Máx 29° · chuva 40%</p>', say:'Em Recife, a máxima de hoje será de 29 graus.'},
+ {id:'n1', t:'Tecnologia', k:'Notícias', html:'<p>Manchete de exemplo sobre tecnologia.</p>', say:'Nas notícias de tecnologia, uma manchete de exemplo.'},
+ {id:'n2', t:'Política', k:'Notícias', html:'<p>Manchete de exemplo sobre política.</p>', say:'Na política, outra manchete de exemplo.'}
+];
+const LABEL = {espera:'Em espera', ouvindo:'Ouvindo', pensando:'Pensando', falando:'Falando'};
+let state = 'espera', amp = 0.04, target = 0.04, speed = 0.15;
+
+// ---- Cards
+const cardsEl = document.getElementById('cards');
+DATA.forEach(d => {
+  const el = document.createElement('article');
+  el.className = 'card'; el.id = 'c-' + d.id; el.tabIndex = 0;
+  el.innerHTML = `<small>${d.k}</small><h3>${d.t}</h3>${d.html}`;
+  el.onclick = () => focusCard(d.id);
+  cardsEl.appendChild(el);
+});
+function focusCard(id){
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.id === 'c-' + id));
+  const c = document.getElementById('c-' + id);
+  if (c) c.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+}
+
+// ---- Estados
+function setState(s){
+  state = s;
+  document.getElementById('status').textContent = LABEL[s];
+  document.querySelectorAll('#bar [data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  speed = {espera:.15, ouvindo:.3, pensando:1.2, falando:.4}[s];
+  target = {espera:.04, ouvindo:.1, pensando:.08, falando:.16}[s];
+}
+document.querySelectorAll('#bar [data-s]').forEach(b => b.onclick = () => setState(b.dataset.s));
+setState('espera');
+
+// ---- Briefing simulado (depois: áudio real do TTS)
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let running = false;
+document.getElementById('go').onclick = async () => {
+  if (running) return; running = true;
+  const cap = document.getElementById('caption');
+  setState('pensando'); cap.textContent = 'Atualizando o radar de notícias...'; await wait(1800);
+  for (const d of DATA){
+    setState('falando'); focusCard(d.id); cap.textContent = d.say;
+    await wait(2800 + d.say.length * 30);
+  }
+  setState('espera'); cap.textContent = ''; running = false;
+};
+
+// ---- Orbe (canvas)
+const cv = document.getElementById('orb'), ctx = cv.getContext('2d');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const RINGS = Array.from({length:9}, (_, i) => ({ph:Math.random()*6.28, tilt:Math.random()*3.14, k:2+Math.floor(Math.random()*4), r:.62+Math.random()*.3, w:i%3+1}));
+let t = 0, env = 0;
+function resize(){ const d = devicePixelRatio || 1, s = cv.clientWidth; cv.width = cv.height = s * d; ctx.setTransform(d,0,0,d,0,0); }
+addEventListener('resize', resize); resize();
+function frame(){
+  const s = cv.clientWidth, c = s / 2;
+  t += (reduce ? 0 : speed) * 0.016;
+  if (state === 'falando' && Math.random() < .12) env = Math.random();
+  amp += (target * (state === 'falando' ? .5 + env : 1) - amp) * .08;
+  ctx.clearRect(0, 0, s, s);
+  ctx.globalCompositeOperation = 'lighter';
+  RINGS.forEach((g, i) => {
+    ctx.beginPath();
+    for (let a = 0; a <= 6.3; a += .04){
+      const wob = Math.sin(a * g.k + t * (1 + i * .15) + g.ph) * amp + Math.sin(a * 2 - t + g.ph) * amp * .5;
+      const r = (g.r + wob) * c * .95;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r * (.75 + .25 * Math.cos(g.tilt + t * .3));
+      const rx = x * Math.cos(g.tilt) - y * Math.sin(g.tilt), ry = x * Math.sin(g.tilt) + y * Math.cos(g.tilt);
+      a ? ctx.lineTo(c + rx, c + ry) : ctx.moveTo(c + rx, c + ry);
+    }
+    ctx.strokeStyle = `rgba(${60 + i * 8},${140 + i * 8},255,${.35 + g.w * .1})`;
+    ctx.lineWidth = g.w * .6; ctx.shadowColor = '#2f7bff'; ctx.shadowBlur = 12; ctx.stroke();
+  });
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
