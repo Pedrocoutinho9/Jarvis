@@ -1,7 +1,29 @@
+# segredos
 .env
+.env.*
+!.env.example
 credentials.json
 token.json
+
+# ambientes e caches
 __pycache__/
 .venv/
+.venv-tts/
 node_modules/
 .DS_Store
+
+# modelos de voz locais (Piper, Kokoro, referência do Chatterbox), baixados à parte
+voices/
+*.onnx
+*.onnx.json
+*.pt
+*.pth
+*.safetensors
+
+# áudios de teste soltos na raiz
+/teste*.mp3
+/teste*.wav
+
+# builds do app executável (futuro)
+build/
+dist/
