@@ -165,7 +165,7 @@ function setState(s){
 setState('espera');
 
 // ---- Áudio: toca a voz pelo AudioContext e mede o volume para animar o orbe
-let actx, analyser, buf, live = false;
+let actx, analyser, buf, live = false, ttsError = '';
 function initAudio(){
   if (actx) { actx.resume(); return; }
   actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -176,10 +176,10 @@ function initAudio(){
 async function fetchAudio(text){
   try {
     const r = await fetch('/api/tts?text=' + encodeURIComponent(text));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok){ const err = await r.json().catch(() => ({})); throw new Error(err.detail || 'HTTP ' + r.status); }
     const ab = await r.arrayBuffer();
     return await new Promise((ok, fail) => actx.decodeAudioData(ab, ok, fail));
-  } catch (e) { console.error('TTS falhou:', e); return null; }
+  } catch (e) { console.error('TTS falhou:', e); ttsError = e.message; return null; }
 }
 function play(buffer){
   return new Promise(res => {
@@ -233,7 +233,8 @@ async function converse(q){
     if (history.length > 12) history.splice(0, history.length - 12);
     setState('falando'); capEl.textContent = reply;
     const audio = await fetchAudio(reply);
-    if (audio) await play(audio); else await wait(2500 + reply.length * 30);
+    if (audio) await play(audio);
+    else { capEl.textContent = reply + ' [sem voz: ' + ttsError + ']'; await wait(4000 + reply.length * 30); }
   } catch (e) {
     live = false; setState('espera'); capEl.textContent = e.message; await wait(4000);
   }
