@@ -19,7 +19,8 @@ async def search(query: str, n: int = 5) -> str:
             r = await client.post(
                 "https://api.tavily.com/search",
                 headers={"Authorization": f"Bearer {key}"},
-                json={"api_key": key, "query": query, "max_results": n, "search_depth": "basic"},
+                json={"api_key": key, "query": query, "max_results": n, "search_depth": "basic",
+                      "include_answer": "basic"},  # resumo pronto: ajuda modelos pequenos a não errar
             )
     except httpx.HTTPError:
         return "A busca na web falhou por erro de rede."
@@ -28,14 +29,17 @@ async def search(query: str, n: int = 5) -> str:
     if r.status_code >= 400:
         return f"A busca na web falhou (HTTP {r.status_code}); talvez o limite mensal tenha acabado."
     try:
-        items = r.json().get("results", [])
+        data = r.json()
     except ValueError:
-        items = []
-    if not items:
+        data = {}
+    items, summary = data.get("results", []), (data.get("answer") or "").strip()
+    if not items and not summary:
         return "A busca não retornou resultados."
     text = "\n".join(
         f"- {i.get('title', '')}: {(i.get('content') or '')[:350]} ({i.get('url', '')})"
         for i in items[:n]
     )
+    if summary:
+        text = f"Resumo da busca: {summary}\nFontes:\n{text}"
     _CACHE[query.lower()] = (time.time(), text)
     return text
