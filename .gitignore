@@ -27,3 +27,6 @@ voices/
 # builds do app executável (futuro)
 build/
 dist/
+
+# memória do Jarvis (dados pessoais; normalmente fica em ~/Library/Application Support/Jarvis)
+memoria.json
