@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from . import web
+from . import google_data, mac_control, memory, web
 
 APP_DIRS = [
     Path("/Applications"), Path("/Applications/Utilities"),
@@ -137,20 +137,40 @@ async def definir_volume(nivel) -> str:
 # efeito=True: mexe no computador | web=True: devolve conteúdo externo não confiável
 TOOLS = {
     "pesquisar_web": {"fn": pesquisar_web, "efeito": False, "web": True,
-                      "desc": 'pesquisa na web e devolve trechos com links. args: {"consulta": "texto curto"}'},
+                      "desc": 'pesquisa na web e devolve trechos com links. args: {"consulta": "texto curto"}',
+                      "params": {"consulta": "texto curto da pesquisa"}},
     "ler_pagina": {"fn": ler_pagina, "efeito": False, "web": True,
-                   "desc": 'lê o texto de uma página para aprofundar. args: {"url": "https://..."}'},
+                   "desc": 'lê o texto de uma página para aprofundar. args: {"url": "https://..."}',
+                   "params": {"url": "endereço https:// da página"}},
     "abrir_app": {"fn": abrir_app, "efeito": True, "web": False,
-                  "desc": 'abre um aplicativo do Mac. args: {"nome": "Spotify"}'},
+                  "desc": 'abre um aplicativo do Mac. args: {"nome": "Spotify"}',
+                  "params": {"nome": "nome do aplicativo, ex.: Spotify"}},
     "abrir_url": {"fn": abrir_url, "efeito": True, "web": False,
-                  "desc": 'abre um endereço no navegador padrão. args: {"url": "https://..."}'},
+                  "desc": 'abre um endereço no navegador padrão. args: {"url": "https://..."}',
+                  "params": {"url": "endereço https://"}},
     "definir_volume": {"fn": definir_volume, "efeito": True, "web": False,
-                       "desc": 'define o volume do Mac. args: {"nivel": 0 a 100}'},
+                       "desc": 'define o volume do Mac. args: {"nivel": 0 a 100}',
+                       "params": {"nivel": "número de 0 a 100"}},
 }
+
+TOOLS.update(memory.TOOLS)  # lembrar / esquecer
+TOOLS.update(google_data.TOOLS)  # ver_agenda / ver_emails (somente leitura)
+TOOLS.update(mac_control.TOOLS)  # Spotify e brilho da tela
+
+
+def schemas(active: dict) -> list:
+    """Ferramentas no formato de function calling (Ollama/OpenAI), sem o trecho 'args:' da descrição."""
+    return [{"type": "function", "function": {
+        "name": n, "description": t["desc"].split(" args:")[0],
+        "parameters": {"type": "object", "required": list(t["params"]),
+                       "properties": {k: {"type": "number" if k == "nivel" else "string", "description": d}
+                                      for k, d in t["params"].items()}}}}
+        for n, t in active.items()]
 
 
 def active_tools(web_on: bool, pc_on: bool) -> dict:
-    return {n: t for n, t in TOOLS.items() if (t["web"] and web_on) or (t["efeito"] and pc_on)}
+    return {n: t for n, t in TOOLS.items()
+            if (t["web"] and web_on) or (t["efeito"] and pc_on) or t.get("memoria")}
 
 
 async def run_tool(nome: str, args, allowed: dict, tainted: bool, seen_urls: set):
@@ -161,6 +181,8 @@ async def run_tool(nome: str, args, allowed: dict, tainted: bool, seen_urls: set
     if not isinstance(args, dict):
         args = {}
     # defesa contra injeção: depois de ler a web, só abre links que apareceram nos resultados
+    if tainted and t.get("memoria"):  # texto da web não pode plantar "lembranças"
+        return "Bloqueado: não mexo na memória depois de ler conteúdo da web na mesma pergunta.", False
     if tainted and t["efeito"] and not (nome == "abrir_url" and str(args.get("url", "")) in seen_urls):
         return ("Bloqueado por segurança: depois de ler conteúdo da web na mesma pergunta, só abro links "
                 "que apareceram nos resultados. Peça a ação diretamente ao usuário."), False

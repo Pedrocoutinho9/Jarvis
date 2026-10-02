@@ -252,6 +252,9 @@ const clearLine = () => { typing++; $('fala').textContent = ''; };
 // (reconhecimento de voz) e resume() fora de um clique falha em silêncio; nesse caso a voz
 // sai por um <audio> que foi destravado no clique do usuário.
 let actx, analyser, buf, live = false;
+// Safari: com AirPods/microfone o AudioContext pode dizer "running" e mesmo assim sair mudo (troca de rota
+// do Bluetooth). Lá a voz sai sempre pelo <audio>, que acompanha a troca de fone sem perder o som.
+const SAFARI = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
 const player = new Audio();
 function silentWav(){ // 50 ms de silêncio, só para destravar o <audio> num gesto do usuário
   const n = 400, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
@@ -269,6 +272,25 @@ function initAudio(){
   analyser.connect(actx.destination);
 }
 let ttsError = '';
+// Volume da voz (RMS a cada 50 ms) calculado fora do alto-falante: um OfflineAudioContext só decodifica,
+// não toca nada, então funciona mesmo quando a voz sai pelo <audio> (Safari, app empacotado).
+const ENV_STEP = .05;
+async function envelope(ab){
+  try {
+    const Off = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const off = new Off(1, 1, 44100);
+    const data = await Promise.race([new Promise((ok, fail) => off.decodeAudioData(ab, ok, fail)), wait(1500)]);
+    if (!data) return null;
+    const ch = data.getChannelData(0), n = Math.round(data.sampleRate * ENV_STEP), out = [];
+    for (let i = 0; i < ch.length; i += n){
+      let sum = 0; const end = Math.min(ch.length, i + n);
+      for (let j = i; j < end; j++) sum += ch[j] * ch[j];
+      out.push(Math.sqrt(sum / (end - i)));
+    }
+    return out;
+  } catch (e) { return null; }
+}
+let envNow = null; // envelope do áudio tocando no <audio>
 async function fetchAudio(text){
   try {
     const r = await fetch('/api/tts?text=' + encodeURIComponent(text));
@@ -280,11 +302,14 @@ async function fetchAudio(text){
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     let buffer = null;
-    try {
+    let env = null;
+    if (SAFARI) env = await envelope(await blob.arrayBuffer());
+    else try {
       const ab = await blob.arrayBuffer();
-      buffer = await new Promise((ok, fail) => actx.decodeAudioData(ab, ok, fail));
+      // no Safari com o microfone ativo o decode pode nunca terminar: depois de 1,5 s toca pelo <audio>
+      buffer = await Promise.race([new Promise((ok, fail) => actx.decodeAudioData(ab, ok, fail)), wait(1500).then(() => null)]);
     } catch (e) { console.warn('decodeAudioData falhou, usando <audio>:', e); }
-    ttsError = ''; return {url, buffer};
+    ttsError = ''; return {url, buffer, env};
   } catch (e) { ttsError = (e && e.message) || String(e); console.error('TTS falhou:', e); return null; }
 }
 async function ensureRunning(){
@@ -293,7 +318,7 @@ async function ensureRunning(){
   return actx.state === 'running';
 }
 async function play(audio){
-  if (audio.buffer && await ensureRunning()) {
+  if (!SAFARI && audio.buffer && await ensureRunning()) {
     return new Promise(res => {
       const src = actx.createBufferSource();
       src.buffer = audio.buffer; src.connect(analyser);
@@ -302,18 +327,22 @@ async function play(audio){
       live = true; src.start();
     });
   }
-  console.warn('AudioContext em', actx.state, '- tocando pelo <audio>');
+  if (!SAFARI) console.warn('AudioContext em', actx.state, '- tocando pelo <audio>');
   player.src = audio.url;
-  live = true;
+  live = false; envNow = audio.env; // o <audio> não passa pelo analisador: o reator segue o envelope
   try {
     await new Promise((res, fail) => {
       player.onended = res; player.onerror = () => fail(new Error('erro no <audio>'));
+      // se o "ended" nunca vier (Safari às vezes trava o player), segue em frente: senão a conversa
+      // fica presa em "ocupado" e o microfone nunca volta a ouvir
+      player.onloadedmetadata = () => { if (isFinite(player.duration)) setTimeout(res, player.duration * 1000 + 1500); };
+      setTimeout(res, 30000);
       player.play().catch(fail);
     });
   } catch (e) {
     ttsError = 'navegador bloqueou o áudio (' + actx.state + '): ' + (e.message || e);
     throw new Error(ttsError);
-  } finally { live = false; }
+  } finally { live = false; envNow = null; }
 }
 async function say(text, audio){ // fala com áudio, ou só legenda se o TTS falhar
   setState('falando');
@@ -358,13 +387,40 @@ async function converse(q){
   initAudio();
   setState('pensando'); line('VOCÊ', q, 'voce');
   try {
-    const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+    const r = await fetch('/api/chat/stream', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({messages:[...history, {role:'user', content:q}]})});
     if (!r.ok){ const err = await r.json().catch(() => ({})); throw new Error(err.detail || 'Erro ' + r.status); }
-    const {reply} = await r.json();
+    // O backend manda uma frase por linha assim que o modelo a escreve: cada uma já vira áudio
+    // e começa a tocar enquanto as próximas ainda estão sendo geradas.
+    const queue = []; let reply = '', ended = false, wake = null;
+    const nudge = () => { if (wake){ wake(); wake = null; } };
+    const reading = (async () => {
+      const rd = r.body.getReader(), dec = new TextDecoder(); let rest = '';
+      for (;;){
+        const {value, done} = await rd.read();
+        rest += dec.decode(value || new Uint8Array(), {stream: !done});
+        const rows = rest.split('\n'); rest = rows.pop();
+        for (const row of rows){
+          if (!row.trim()) continue;
+          const ev = JSON.parse(row);
+          if (ev.type === 'sentence') queue.push({text: ev.text, audio: fetchAudio(ev.text)});
+          else if (ev.type === 'done') reply = ev.reply;
+          else if (ev.type === 'error') throw new Error(ev.detail);
+          nudge();
+        }
+        if (done) break;
+      }
+    })().finally(() => { ended = true; nudge(); });
+    reading.catch(() => {}); // o erro é tratado no await mais abaixo
+    for (let i = 0; ; i++){
+      while (i >= queue.length && !ended) await new Promise(res => { wake = res; });
+      if (i >= queue.length) break;
+      await say(queue[i].text, await queue[i].audio);
+    }
+    await reading; // repassa um erro do stream para o catch abaixo
+    reply = reply || queue.map(s => s.text).join(' ');
     history.push({role:'user', content:q}, {role:'assistant', content:reply});
     if (history.length > 12) history.splice(0, history.length - 12);
-    await say(reply, await fetchAudio(reply));
   } catch (e) {
     live = false; setState('espera'); line('ERRO', e.message); await wait(4000);
   }
@@ -439,6 +495,9 @@ function draw(){
     analyser.getByteTimeDomainData(buf);
     let sum = 0; for (const v of buf){ const x = (v - 128) / 128; sum += x * x; }
     pulse = Math.max(pulse, Math.min(1, Math.sqrt(sum / buf.length) * 4));
+  } else if (envNow && !player.paused){ // voz tocando pelo <audio>: volume real pelo envelope
+    const v = envNow[Math.floor(player.currentTime / ENV_STEP)] || 0;
+    pulse = Math.max(pulse, Math.min(1, v * 4));
   } else if (state === 'falando' && Math.random() < .12) pulse = Math.random();
   const goal = {espera:.12, ouvindo:.35, pensando:.3, falando:.45 + pulse * .55}[state];
   amp += (goal - amp) * .1; pulse *= .92;
