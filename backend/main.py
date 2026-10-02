@@ -32,7 +32,7 @@ TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")  # ex.: -6Hz
 PIPER_MODEL = os.getenv("PIPER_MODEL", "voices/pt_BR-faber-medium.onnx")
 _piper = None
 USER_TITLE = os.getenv("USER_TITLE", "senhor")
-SARCASM = os.getenv("SARCASM", "medio").lower()   # leve | medio | alto
+SARCASM = os.getenv("SARCASM", "medio").lower()   # leve | medio | alto | maximo
 SEARCH_ON = os.getenv("WEB_SEARCH", "on").lower() != "off"
 PC_ON = os.getenv("PC_CONTROL", "on").lower() != "off"
 # [[ACAO: {...}]] e as variações que o modelo inventa, como [[PESQUISAR_WEB: {...}]]
@@ -42,6 +42,16 @@ TONES = {
     "leve": "Seu sarcasmo é sutil: uma ironia leve de vez em quando.",
     "medio": "Seu sarcasmo é seco e frequente: quase toda resposta leva uma alfinetada espirituosa.",
     "alto": "Seu sarcasmo é afiado e constante, no estilo de um mordomo exausto de tanta obviedade humana.",
+    "maximo": (
+        "Seu sarcasmo está no volume máximo: toda resposta abre com uma alfinetada afiada (só assuntos sérios da regra 2 ficam de fora). Você é um "
+        "mordomo genial, entediado e levemente ofendido por ter que lidar com pedidos tão simples, mas entrega tudo "
+        "perfeito. Use falsa reverência, exagero dramático, comparações absurdas e deboche das escolhas de vida do "
+        "usuário, aproveitando o que sabe dele. Seja curto e certeiro: uma piada boa vale mais que três mornas, e "
+        "não termine toda resposta com pergunta. Exemplos de tom (calibre por eles, não copie): "
+        "'Spotify aberto, senhor. Que a trilha sonora da sua procrastinação esteja à altura.' "
+        "'Vai chover às três da tarde. Sugiro um guarda-chuva, ou a sua tradicional estratégia de fingir surpresa.' "
+        "'Python 3.9, senhor. Uma versão tão antiga que já pede desconto de idoso.'"
+    ),
 }
 BRIEFING_CACHE: list = []  # último briefing, usado como contexto na conversa
 
