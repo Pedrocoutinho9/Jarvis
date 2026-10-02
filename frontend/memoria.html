@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memória do Jarvis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+:root{
+  --vazio:#02080F; --holo:#46D2FF; --holo-forte:#B8F1FF; --holo-fraco:#1E5F7D;
+  --ouro:#FFB830; --rubi:#FF4D3D; --painel:rgba(5,22,38,.92);
+  --display:"Oxanium","Eurostile",system-ui,sans-serif; --texto:"Rajdhani","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse 70% 60% at 50% 20%,#062238 0%,var(--vazio) 70%) var(--vazio);color:var(--holo);font-family:var(--texto);font-weight:500;font-size:17px;min-height:100vh}
+main{max-width:760px;margin:0 auto;padding:28px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--holo-fraco);padding-bottom:10px;margin-bottom:22px}
+h1{margin:0;font-family:var(--display);font-weight:700;letter-spacing:.32em;font-size:1.5rem;color:var(--holo-forte);text-shadow:0 0 18px rgba(70,210,255,.6)}
+h1 small{display:block;font-family:var(--texto);font-size:.75rem;letter-spacing:.2em;color:var(--holo);opacity:.75;text-shadow:none}
+a{color:var(--holo)}
+.novo,.fato{display:flex;gap:8px;align-items:center;background:var(--painel);border:1px solid var(--holo-fraco);padding:10px;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.novo{margin-bottom:22px;border-color:var(--holo)}
+input,select,button{font:inherit;color:var(--holo-forte);background:#04131F;border:1px solid var(--holo-fraco);padding:7px 9px;min-width:0}
+input{flex:1}
+button{cursor:pointer;font-family:var(--display);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+button:hover{border-color:var(--holo)}
+button.apagar:hover{border-color:var(--rubi);color:var(--rubi)}
+h2{font-family:var(--display);font-size:.8rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ouro);margin:22px 0 8px}
+.lista{display:flex;flex-direction:column;gap:8px}
+.vazio{opacity:.7}
+footer{margin-top:30px;font-size:.85rem;opacity:.65;word-break:break-all}
+@media (max-width:560px){.novo,.fato{flex-wrap:wrap}.novo input,.fato input{flex-basis:100%}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>MEMÓRIA<small>O QUE O JARVIS SABE SOBRE VOCÊ</small></h1>
+    <a href="/">Voltar ao HUD</a>
+  </header>
+  <form class="novo" id="novo">
+    <input id="txt" placeholder="Novo fato, ex.: Prefere ser acordado com café" maxlength="300" required>
+    <select id="cat"></select>
+    <button>Guardar</button>
+  </form>
+  <div id="grupos"></div>
+  <footer id="arq"></footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let CATS = [];
+const api = (path, method = 'GET', body) => fetch(path, {method, headers:{'Content-Type':'application/json'},
+  body: body && JSON.stringify(body)}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const opts = sel => CATS.map(c => `<option${c === sel ? ' selected' : ''}>${c}</option>`).join('');
+
+async function load(){
+  const d = await api('/api/memoria');
+  CATS = d.categorias;
+  if (!$('cat').options.length) $('cat').innerHTML = opts('outros');
+  $('arq').textContent = 'Arquivo: ' + d.arquivo;
+  const g = $('grupos'); g.innerHTML = '';
+  if (!d.fatos.length){ g.innerHTML = '<p class="vazio">Nada guardado ainda. Converse com o Jarvis ou adicione acima.</p>'; return; }
+  for (const cat of CATS){
+    const items = d.fatos.filter(f => f.categoria === cat);
+    if (!items.length) continue;
+    const h = document.createElement('h2'); h.textContent = cat; g.append(h);
+    const list = document.createElement('div'); list.className = 'lista'; g.append(list);
+    for (const f of items){
+      const row = document.createElement('div'); row.className = 'fato';
+      row.innerHTML = `<input maxlength="300"><select>${opts(f.categoria)}</select>
+        <button class="salvar">Salvar</button><button class="apagar">Apagar</button>`;
+      const [inp, sel] = [row.querySelector('input'), row.querySelector('select')];
+      inp.value = f.fato;
+      row.querySelector('.salvar').onclick = async () => { await api('/api/memoria/' + f.id, 'PUT', {fato: inp.value, categoria: sel.value}); load(); };
+      row.querySelector('.apagar').onclick = async () => { if (confirm('Apagar este fato?')){ await api('/api/memoria/' + f.id, 'DELETE'); load(); } };
+      list.append(row);
+    }
+  }
+}
+$('novo').onsubmit = async e => {
+  e.preventDefault();
+  await api('/api/memoria', 'POST', {fato: $('txt').value, categoria: $('cat').value});
+  $('txt').value = ''; load();
+};
+load();
+</script>
+</body>
+</html>
