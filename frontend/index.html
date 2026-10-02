@@ -41,6 +41,8 @@ background-image:linear-gradient(rgba(127,220,255,.035) 1px,transparent 1px),lin
 svg{width:100%;height:100%}
 
 #bar{position:fixed;top:14px;right:16px;display:flex;gap:8px;z-index:5}
+#ask{background:rgba(9,20,46,.6);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;font-size:.8rem;width:200px}
+#ask:focus{outline:none;border-color:var(--blue)}
 button{background:rgba(9,20,46,.6);color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;font-size:.8rem;cursor:pointer}
 button:hover,button:focus-visible,button.on{color:var(--text);border-color:var(--blue);outline:none}
 button.on{background:var(--blue)}
@@ -59,6 +61,7 @@ button.on{background:var(--blue)}
   <aside id="dockR" class="dock"></aside>
 </div>
 <div id="bar">
+  <input id="ask" placeholder="Pergunte algo..." autocomplete="off">
   <button id="go">Simular briefing</button>
   <button id="mic">Ativar microfone</button>
 </div>
@@ -76,6 +79,7 @@ const ICONS = {
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   cloud:'<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5 4.75 4.75 0 0 1 17.5 18z"/>',
   rain:'<path d="M7 15a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 5.5 4.75 4.75 0 0 1 17.5 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+  chart:'<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>',
   news:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>'
 };
 const ico = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ICONS.news}</svg>`;
@@ -189,7 +193,7 @@ function play(buffer){
 // ---- Briefing
 let running = false;
 async function runBriefing(){
-  if (running || peeking) return; running = true;
+  if (running || peeking || busy) return; running = true;
   pauseRec(); // não deixa o Jarvis ouvir a própria voz
   initAudio(); await actx.resume();
   setState('pensando'); capEl.textContent = 'Preparando seu briefing...';
@@ -206,11 +210,41 @@ async function runBriefing(){
     await wait(350);
     await dockFeature(f, d);
   }
-  capEl.textContent = ''; running = false;
+  capEl.textContent = ''; running = false; lastActive = Date.now();
   resumeRec();
   if (!listening) setState('espera');
 }
 $('go').onclick = () => { initAudio(); runBriefing(); };
+
+// ---- Conversa: pergunta -> /api/chat -> resposta falada
+let busy = false, lastActive = 0;
+const history = [];
+async function converse(q){
+  if (running || busy) return; busy = true;
+  pauseRec();
+  initAudio(); await actx.resume();
+  setState('pensando'); capEl.textContent = q;
+  try {
+    const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({messages:[...history, {role:'user', content:q}]})});
+    if (!r.ok){ const err = await r.json().catch(() => ({})); throw new Error(err.detail || 'Erro ' + r.status); }
+    const {reply} = await r.json();
+    history.push({role:'user', content:q}, {role:'assistant', content:reply});
+    if (history.length > 12) history.splice(0, history.length - 12);
+    setState('falando'); capEl.textContent = reply;
+    const audio = await fetchAudio(reply);
+    if (audio) await play(audio); else await wait(2500 + reply.length * 30);
+  } catch (e) {
+    live = false; setState('espera'); capEl.textContent = e.message; await wait(4000);
+  }
+  capEl.textContent = ''; busy = false; lastActive = Date.now();
+  resumeRec();
+  if (!listening) setState('espera');
+}
+$('ask').onkeydown = e => {
+  const q = e.target.value.trim();
+  if (e.key === 'Enter' && q){ initAudio(); e.target.value = ''; converse(q); }
+};
 
 // ---- Ouvir: reconhecimento de voz do navegador (Chrome ou Safari)
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -219,11 +253,20 @@ function startRec(){
   rec = new SR();
   rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
   rec.onresult = e => {
-    let text = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) text += e.results[i][0].transcript;
-    if (running) return;
+    if (running || busy) return;
+    let text = '', final = false;
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      text += e.results[i][0].transcript;
+      if (e.results[i].isFinal) final = true;
+    }
     capEl.textContent = text;
-    if (/bom dia|jarvis/i.test(text)) runBriefing();
+    if (/bom dia/i.test(text)){ runBriefing(); return; }
+    // perguntas: precisam da palavra "Jarvis" ou vir logo após uma interação (25 s)
+    const awake = /jarvis/i.test(text) || Date.now() - lastActive < 25000;
+    if (final && awake){
+      const q = text.replace(/^\s*(ei |ok |olá )?jarvis[,.!]?\s*/i, '').trim();
+      if (q.length > 2) converse(q);
+    }
   };
   rec.onerror = e => {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){

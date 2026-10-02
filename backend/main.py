@@ -1,6 +1,8 @@
 import html
 import os
 import re
+import time
+from datetime import datetime
 from pathlib import Path
 
 import edge_tts
@@ -10,6 +12,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from . import llm
 
 load_dotenv()
 
@@ -18,6 +23,8 @@ LAT = float(os.getenv("LAT", "-8.05"))
 LON = float(os.getenv("LON", "-34.88"))
 
 VOICE = os.getenv("TTS_VOICE", "pt-BR-AntonioNeural")
+USER_TITLE = os.getenv("USER_TITLE", "senhor")
+BRIEFING_CACHE: list = []  # último briefing, usado como contexto na conversa
 
 FEEDS = {
     "Tecnologia": "https://g1.globo.com/rss/g1/tecnologia/",
@@ -46,6 +53,57 @@ def _image(entry):
             return link["href"]
     m = re.search(r'<img[^>]+src="(https?://[^"]+)"', entry.get("summary", "") or "")
     return m.group(1) if m else None
+
+
+_MARKET = {"t": 0.0, "data": None}
+MARKET_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,BTC-BRL"
+
+
+async def market_data():
+    """Cotações em reais (cache de 60 s). Devolve None se a API estiver fora do ar."""
+    if _MARKET["data"] and time.time() - _MARKET["t"] < 60:
+        return _MARKET["data"]
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(MARKET_URL)
+            r.raise_for_status()
+            d = r.json()
+        out = {}
+        for key, name in (("USDBRL", "Dólar"), ("EURBRL", "Euro"), ("BTCBRL", "Bitcoin")):
+            if key in d:
+                out[name] = {"bid": float(d[key]["bid"]), "pct": float(d[key]["pctChange"])}
+        if out:
+            _MARKET.update(t=time.time(), data=out)
+            return out
+    except Exception:
+        pass
+    return _MARKET["data"]  # último valor conhecido (ou None)
+
+
+def _br(x: float, nd: int = 2) -> str:
+    s = f"{x:,.{nd}f}"
+    return s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+async def market_card() -> dict:
+    m = await market_data()
+    if not m:
+        return {"id": "mercado", "icon": "chart", "k": "Mercado", "t": "Câmbio",
+                "html": "<p>Cotações indisponíveis no momento.</p>",
+                "say": "Não consegui obter as cotações agora."}
+    lis = "".join(
+        f"<li>{n}: R$ {_br(v['bid'], 0 if n == 'Bitcoin' else 2)} ({_br(v['pct'])}%)</li>"
+        for n, v in m.items()
+    )
+    say = []
+    if "Dólar" in m:
+        d = m["Dólar"]
+        mov = "em alta" if d["pct"] >= 0 else "em queda"
+        say.append(f"O dólar está a {_br(d['bid'])} reais, {mov} de {_br(abs(d['pct']))} por cento.")
+    if "Euro" in m:
+        say.append(f"O euro, a {_br(m['Euro']['bid'])} reais.")
+    return {"id": "mercado", "icon": "chart", "k": "Mercado", "t": "Câmbio",
+            "html": f"<ul>{lis}</ul>", "say": " ".join(say) or "As cotações estão na tela."}
 
 
 async def weather_card() -> dict:
@@ -126,10 +184,64 @@ def email_card() -> dict:  # placeholder até o passo do Gmail
 
 @app.get("/api/briefing")
 async def briefing():
-    cards = [agenda_card(), email_card(), await weather_card()]
+    cards = [agenda_card(), email_card(), await weather_card(), await market_card()]
     for topic, url in FEEDS.items():
         cards.append(await news_card(topic, url))
+    BRIEFING_CACHE[:] = cards
     return cards
+
+
+def _plain(markup: str) -> str:
+    text = html.unescape(re.sub(r"<[^>]+>", " ", markup))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def system_prompt(market=None) -> str:
+    lines = [f"- {c['k']} ({c['t']}): {_plain(c['html'])}" for c in BRIEFING_CACHE if c["id"] != "mercado"]
+    if market:
+        quotes = "; ".join(f"{n} R$ {_br(v['bid'], 0 if n == 'Bitcoin' else 2)} ({_br(v['pct'])}% no dia)" for n, v in market.items())
+        lines.append(f"- Cotações em tempo real: {quotes}")
+    data = "\n".join(lines) if lines else "Nenhum briefing foi carregado ainda."
+    return (
+        f'Você é o Jarvis, assistente pessoal por voz. Trate o usuário por "{USER_TITLE}". '
+        "Responda em português do Brasil, de forma natural e direta, em no máximo 3 frases curtas, "
+        "porque sua resposta será lida em voz alta: nada de markdown, listas, emojis ou símbolos. "
+        "Se não souber algo, diga com franqueza e não invente dados. "
+        f"Cidade do usuário: {CITY}. Data de hoje: {datetime.now().strftime('%d/%m/%Y')}.\n\n"
+        "Dados do briefing de hoje (use quando a pergunta for sobre eles):\n" + data
+    )
+
+
+class Msg(BaseModel):
+    role: str
+    content: str
+
+
+class ChatIn(BaseModel):
+    messages: list[Msg]
+
+
+def _trim(text: str, limit: int = 580) -> str:
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    end = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+    return cut[: end + 1] if end > 100 else cut
+
+
+@app.post("/api/chat")
+async def chat(body: ChatIn):
+    msgs = [{"role": "assistant" if m.role == "assistant" else "user", "content": m.content[:1000]}
+            for m in body.messages[-12:]]
+    if not msgs or msgs[-1]["role"] != "user":
+        raise HTTPException(400, "Mensagem inválida")
+    try:
+        reply = await llm.ask(msgs, system_prompt(await market_data()))
+    except llm.LLMError as e:
+        raise HTTPException(503, str(e))
+    except httpx.HTTPError:
+        raise HTTPException(502, "Falha de rede ao consultar o modelo.")
+    return {"reply": _trim(reply)}
 
 
 @app.get("/api/tts")
