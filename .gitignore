@@ -4,6 +4,9 @@
 !.env.example
 credentials.json
 token.json
+google_client.json
+google_token.json
+client_secret*.json
 
 # ambientes e caches
 __pycache__/
