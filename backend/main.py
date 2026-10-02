@@ -296,16 +296,21 @@ async def chat(body: ChatIn):
 
 @app.get("/api/tts")
 async def tts(text: str = Query(..., max_length=900)):
-    audio = b""
-    try:
-        async for chunk in edge_tts.Communicate(text, VOICE).stream():
-            if chunk["type"] == "audio":
-                audio += chunk["data"]
-    except Exception:
-        raise HTTPException(502, "Falha ao gerar áudio")
-    if not audio:
-        raise HTTPException(502, "Áudio vazio")
-    return Response(audio, media_type="audio/mpeg")
+    error = None
+    for _ in range(2):  # o serviço da Microsoft às vezes recusa a primeira conexão
+        audio = b""
+        try:
+            async for chunk in edge_tts.Communicate(text, VOICE).stream():
+                if chunk["type"] == "audio":
+                    audio += chunk["data"]
+        except Exception as e:
+            error = f"{e.__class__.__name__}: {e}"
+            continue
+        if audio:
+            return Response(audio, media_type="audio/mpeg")
+        error = "áudio vazio"
+    print(f"[jarvis] TTS falhou (voz {VOICE}): {error}")
+    raise HTTPException(502, f"Falha ao gerar áudio ({error}). Rode: pip install -U edge-tts")
 
 
 app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
