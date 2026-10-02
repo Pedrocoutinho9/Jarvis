@@ -4,101 +4,184 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jarvis</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap">
 <style>
-:root{--bg:#02060f;--blue:#2f7bff;--cyan:#7fdcff;--text:#dbe8ff;--dim:#7f97c4;--panel:rgba(9,20,46,.78);--line:rgba(127,220,255,.18)}
-*{box-sizing:border-box;margin:0}
+/* Layout: HUD do capacete. O reator arc no centro é o rosto do Jarvis; painéis holográficos chanfrados nas laterais; transcrição em linha de comando embaixo.  */
+:root{
+  --vazio:#02080F;     /* fundo do capacete */
+  --holo:#46D2FF;      /* linhas e texto holográfico */
+  --holo-forte:#B8F1FF;/* núcleo e valores */
+  --holo-fraco:#1E5F7D;/* traços secundários */
+  --ouro:#FFB830;      /* dourado da armadura: o que está sendo falado */
+  --rubi:#FF4D3D;      /* vermelho da armadura: alerta */
+  --painel:rgba(5,22,38,.92);
+  --display:"Oxanium","Eurostile","Bank Gothic","Segoe UI",system-ui,sans-serif;
+  --texto:"Rajdhani","Arial Narrow","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
 html,body{height:100%}
-body{background:radial-gradient(ellipse 65% 55% at 50% 36%,#08173d 0%,var(--bg) 72%);color:var(--text);font-family:"Chakra Petch",system-ui,sans-serif;overflow:hidden}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;
-background-image:linear-gradient(rgba(127,220,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(127,220,255,.035) 1px,transparent 1px);background-size:56px 56px;
--webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%)}
-#stage{position:fixed;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;justify-items:center;padding:22px 20px 18px;overflow:auto}
-#status{font-size:.95rem;letter-spacing:.3em;text-indent:.3em;color:var(--cyan);opacity:.85}
-#orb{width:min(40vh,70vw);height:min(40vh,70vw);align-self:center}
-#feature{width:100%;min-height:32vh;display:flex;justify-content:center;align-items:flex-start}
-#caption{min-height:2.6em;max-width:780px;text-align:center;font-size:clamp(1rem,2vw,1.35rem);padding-top:10px}
+body{margin:0;background:radial-gradient(ellipse 60% 55% at 50% 42%,#062238 0%,var(--vazio) 70%) var(--vazio);color:var(--holo);font-family:var(--texto);font-weight:500;font-size:16px;overflow-x:hidden}
+/* scanlines e vinheta */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(0deg,rgba(70,210,255,.035) 0 1px,transparent 1px 3px)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;box-shadow:inset 0 0 160px 40px rgba(0,0,0,.75)}
 
-.feature{width:min(560px,90vw);background:var(--panel);border:1px solid rgba(127,220,255,.3);border-radius:16px;padding:22px 24px;box-shadow:0 0 60px rgba(47,123,255,.2);backdrop-filter:blur(10px)}
-.f-head{display:flex;align-items:center;gap:10px;color:var(--cyan);margin-bottom:6px}
-.f-head .ico{width:28px;height:28px}
-.f-head small{font-size:.85rem;color:var(--dim)}
-.feature h2{font-size:1.6rem;margin-bottom:12px}
-.feature img{display:block;width:100%;max-height:18vh;object-fit:cover;border-radius:10px;margin-bottom:12px}
-.f-body{font-size:1.05rem;line-height:1.5}
-.f-body ul{padding-left:18px}.f-body li{margin-bottom:6px}
-.f-body .big{font-size:3.4rem;font-weight:600;line-height:1.1}
+.hud{position:relative;min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);grid-template-rows:auto 1fr auto auto;grid-template-areas:"topo topo topo" "esq centro dir" "fala fala fala" "cmd cmd cmd";gap:14px 28px;padding-inline:clamp(16px,3vw,44px);padding-block:clamp(16px,2.4vh,28px)}
+/* cantoneiras do visor */
+.canto{position:fixed;width:46px;height:46px;border:2px solid var(--holo);opacity:.55;pointer-events:none}
+.canto.a{top:10px;left:10px;border-right:0;border-bottom:0}.canto.b{top:10px;right:10px;border-left:0;border-bottom:0}
+.canto.c{bottom:10px;left:10px;border-right:0;border-top:0}.canto.d{bottom:10px;right:10px;border-left:0;border-top:0}
 
-.dock{position:absolute;top:50%;transform:translateY(-50%);width:250px;display:flex;flex-direction:column;gap:12px}
-#dockL{left:28px}#dockR{right:28px}
-.slot{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;opacity:0;transition:opacity .45s;cursor:pointer}
-.slot.shown{opacity:1}
-.slot:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-.slot .ico{flex:none;width:30px;height:30px;color:var(--cyan)}
-.slot small{color:var(--dim);font-size:.72rem}
-.slot h3{font-size:.95rem;margin:1px 0 3px}
-.slot p{font-size:.8rem;line-height:1.35;color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-svg{width:100%;height:100%}
+/* Topo */
+.topo{grid-area:topo;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--holo-fraco);padding-bottom:10px}
+.marca{font-family:var(--display);font-weight:700;font-size:clamp(1.3rem,2.4vw,1.9rem);letter-spacing:.42em;color:var(--holo-forte);text-shadow:0 0 18px rgba(70,210,255,.7)}
+.marca small{display:block;font-family:var(--texto);font-weight:600;font-size:.72rem;letter-spacing:.24em;color:var(--holo);opacity:.75;text-shadow:none}
+.tele{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--display);font-size:.82rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+.tele div{display:flex;flex-direction:column;gap:1px}
+.tele span{font-family:var(--texto);font-size:.68rem;letter-spacing:.22em;color:var(--holo-fraco);text-transform:uppercase}
+.tele b{color:var(--holo-forte);font-weight:600}
 
-#bar{position:fixed;top:14px;right:16px;display:flex;gap:8px;z-index:5}
-#ask{background:rgba(9,20,46,.6);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;font-size:.8rem;width:200px}
-#ask:focus{outline:none;border-color:var(--blue)}
-button{background:rgba(9,20,46,.6);color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;font-size:.8rem;cursor:pointer}
-button:hover,button:focus-visible,button.on{color:var(--text);border-color:var(--blue);outline:none}
-button.on{background:var(--blue)}
+/* Reator */
+.centro{grid-area:centro;display:grid;place-items:center;position:relative;min-height:0}
+#reator{width:min(54vh,100%);aspect-ratio:1;max-width:100%}
+.modo{position:absolute;bottom:2%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:600;font-size:.85rem;letter-spacing:.5em;text-indent:.5em;color:var(--holo-forte);white-space:nowrap}
+body[data-s="falando"] .modo{color:var(--ouro)}
 
-@media (max-width:1100px){.dock{position:static;transform:none;width:100%;flex-direction:row;overflow-x:auto}.slot{flex:0 0 230px}}
-@media (prefers-reduced-motion:reduce){.slot{transition:none}}
+/* Painéis holográficos chanfrados */
+.col{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0}
+.esq{grid-area:esq}.dir{grid-area:dir}
+.pnl{--c:14px;position:relative;padding:1px;background:linear-gradient(135deg,var(--holo) 0%,var(--holo-fraco) 45%,var(--holo-fraco) 70%,var(--holo) 100%);clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c));cursor:pointer;border:0;font:inherit;color:inherit;text-align:left;width:100%;display:block;transition:background .3s}
+.pnl>div{clip-path:inherit;background:var(--painel);backdrop-filter:blur(6px);padding:12px 16px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline}
+.pnl:focus-visible{outline:none;background:var(--holo-forte)}
+.pnl .rot{font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--holo);opacity:.8}
+.pnl .cod{font-family:var(--display);font-size:.66rem;color:var(--holo-fraco);letter-spacing:.1em}
+.pnl .val{grid-column:1/-1;font-family:var(--display);font-weight:600;font-size:1.65rem;line-height:1.1;color:var(--holo-forte);font-variant-numeric:tabular-nums}
+.pnl .det{grid-column:1/-1;font-size:.98rem;line-height:1.3;color:var(--holo);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pnl.manchete .val{font-family:var(--texto);font-weight:700;font-size:1.12rem;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pnl .alerta{color:var(--rubi)}
+.pnl.atual{background:var(--ouro)}
+.pnl.atual .rot,.pnl.atual .val{color:var(--ouro)}
+.pnl.atual>div{background:rgba(34,22,4,.94)}
+
+/* Projeção holográfica com imagem (notícias) */
+#reator{transition:opacity .4s,transform .4s}
+body.projetando #reator{opacity:.28;transform:scale(.92)}
+.proj{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(460px,94%);z-index:2;--c:16px;padding:1px;background:linear-gradient(135deg,var(--holo),var(--holo-fraco) 50%,var(--holo));clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c))}
+.proj>div{clip-path:inherit;background:rgba(4,18,32,.94);padding:10px 10px 14px}
+.proj .tela{position:relative;aspect-ratio:16/9;overflow:hidden;background:#06192A}
+.proj img{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(.75) contrast(1.08)}
+.proj .tela::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(70,210,255,.18),rgba(70,210,255,0) 40%,rgba(2,8,15,.45)),repeating-linear-gradient(0deg,rgba(2,8,15,.28) 0 1px,transparent 1px 3px);pointer-events:none}
+.proj .feixe{position:absolute;left:0;right:0;height:3px;background:var(--holo-forte);box-shadow:0 0 18px 4px rgba(70,210,255,.8);top:0;opacity:0;z-index:1}
+.proj .rot{display:flex;justify-content:space-between;margin:10px 4px 2px;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ouro)}
+.proj .rot span:last-child{font-family:var(--display);color:var(--holo-fraco);letter-spacing:.1em}
+.proj h2{margin:0 4px;font-family:var(--texto);font-weight:700;font-size:1.3rem;line-height:1.2;color:var(--holo-forte);text-wrap:balance}
+.pnl.manchete:has(.mini)>div{grid-template-columns:72px minmax(0,1fr) auto}
+.pnl .mini{grid-row:1/3;width:72px;height:54px;object-fit:cover;filter:saturate(.7);align-self:center;border:1px solid var(--holo-fraco)}
+.pnl.manchete:has(.mini) .val{grid-column:2/-1}
+
+/* Transcrição */
+.fala{grid-area:fala;margin:0 auto;width:min(900px,100%);min-height:3.4em;font-size:clamp(1.1rem,2.1vw,1.45rem);line-height:1.4;color:var(--holo-forte);font-weight:600}
+.fala .quem{font-family:var(--display);font-size:.72em;letter-spacing:.3em;color:var(--ouro);margin-right:.6em}
+.fala .quem.voce{color:var(--holo)}
+.fala .cur{display:inline-block;width:.55em;height:1.05em;vertical-align:-.15em;background:var(--holo-forte);margin-left:2px;animation:pisca 1s steps(1) infinite}
+@keyframes pisca{50%{opacity:0}}
+
+/* Linha de comando */
+.cmd{grid-area:cmd;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;width:min(900px,100%);margin:0 auto}
+.campo{flex:1 1 280px;min-width:0;display:flex;align-items:center;gap:10px;border:1px solid var(--holo-fraco);background:rgba(8,32,52,.5);padding:0 14px;clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)}
+.campo:focus-within{border-color:var(--holo)}
+.campo span{font-family:var(--display);color:var(--ouro);font-weight:700}
+#ask{flex:1;min-width:0;background:transparent;border:0;color:var(--holo-forte);font:inherit;font-size:1.1rem;font-weight:600;padding:12px 0;outline:none}
+#ask::placeholder{color:var(--holo-fraco)}
+.btn{font-family:var(--display);font-weight:600;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--holo-forte);background:rgba(70,210,255,.08);border:1px solid var(--holo);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.btn:hover{background:rgba(70,210,255,.2)}
+.btn:focus-visible{outline:2px solid var(--ouro);outline-offset:-4px}
+.btn.prim{background:var(--holo);color:var(--vazio)}
+#mic[aria-pressed="true"]{background:var(--ouro);border-color:var(--ouro);color:var(--vazio)}
+
+@media (max-width:900px){
+  .hud{grid-template-columns:1fr 1fr;grid-template-areas:"topo topo" "centro centro" "fala fala" "esq dir" "cmd cmd"}
+  #reator{width:min(78vw,380px)}
+}
+@media (max-width:520px){
+  .hud{grid-template-columns:1fr;grid-template-areas:"topo" "centro" "fala" "esq" "dir" "cmd"}
+  .tele{gap:14px}.btn{flex:1 1 auto}.canto{display:none}
+}
+@media (prefers-reduced-motion:reduce){.fala .cur{animation:none}*{transition:none!important}}
 </style>
+
 </head>
 <body>
-<div id="stage">
-  <div id="status">Em espera</div>
-  <canvas id="orb"></canvas>
-  <div id="feature"></div>
-  <div id="caption" aria-live="polite"></div>
-  <aside id="dockL" class="dock"></aside>
-  <aside id="dockR" class="dock"></aside>
-</div>
-<div id="bar">
-  <input id="ask" placeholder="Pergunte algo..." autocomplete="off">
-  <button id="go">Simular briefing</button>
-  <button id="mic">Ativar microfone</button>
+<i class="canto a"></i><i class="canto b"></i><i class="canto c"></i><i class="canto d"></i>
+<div class="hud">
+  <header class="topo">
+    <div class="marca">J.A.R.V.I.S.<small>Assistente pessoal · Pedro</small></div>
+    <div class="tele">
+      <div><span>Hora</span><b id="hora">--:--:--</b></div>
+      <div><span>Data</span><b id="data">--.--.----</b></div>
+      <div><span>Local</span><b id="local">--</b></div>
+      <div><span>Externa</span><b id="externa">-- °C</b></div>
+    </div>
+  </header>
+
+  <section class="col esq" id="esq" aria-label="Agenda, e-mails e clima"></section>
+  <div class="centro">
+    <canvas id="reator" aria-hidden="true"></canvas>
+    <div class="modo" id="modo" role="status">EM ESPERA</div>
+  </div>
+  <section class="col dir" id="dir" aria-label="Mercado e notícias"></section>
+
+  <p class="fala" id="fala" aria-live="polite"></p>
+
+  <div class="cmd">
+    <label class="campo"><span>›</span><input id="ask" placeholder="Pergunte ao Jarvis" autocomplete="off" aria-label="Pergunte ao Jarvis"></label>
+    <button class="btn prim" id="go">Briefing</button>
+    <button class="btn" id="mic" aria-pressed="false">Microfone</button>
+  </div>
 </div>
 <script>
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id => document.getElementById(id);
-const capEl = $('caption'), micBtn = $('mic');
-const LABEL = {espera:'Em espera', ouvindo:'Ouvindo', pensando:'Pensando', falando:'Falando'};
-let state = 'espera', amp = 0.04, target = 0.04, speed = 0.15;
-
-// ---- Ícones e helpers
-const ICONS = {
-  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
-  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-  cloud:'<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5 4.75 4.75 0 0 1 17.5 18z"/>',
-  rain:'<path d="M7 15a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 5.5 4.75 4.75 0 0 1 17.5 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
-  chart:'<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>',
-  news:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>'
-};
-const ico = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ICONS.news}</svg>`;
-function mk(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-const plain = html => { const t = document.createElement('div'); t.innerHTML = html; return t.textContent.trim(); };
+const micBtn = $('mic');
+const LABEL = {espera:'EM ESPERA', ouvindo:'OUVINDO', pensando:'PROCESSANDO', falando:'FALANDO'};
+let state = 'espera', pulse = 0;
 const wait = ms => new Promise(r => setTimeout(r, ms));
+function mk(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const frag = html => { const t = document.createElement('div'); t.innerHTML = html || ''; return t; };
 
-// ---- Dados e painéis laterais (começam escondidos; cada card "pousa" quando é falado)
+// ---- Estados
+function setState(s){ state = s; document.body.dataset.s = s; $('modo').textContent = LABEL[s]; }
+setState('espera');
+
+// ---- Painéis: cada card do /api/briefing vira um painel holográfico
 let DATA = [];
-function renderSlots(){
-  $('dockL').innerHTML = ''; $('dockR').innerHTML = '';
-  DATA.forEach(d => {
-    const el = mk('article', 'slot'); el.id = 's-' + d.id; el.tabIndex = 0;
-    const i = mk('span', 'ico'); i.innerHTML = ico(d.icon);
-    const box = mk('div'); box.append(mk('small', '', d.k), mk('h3', '', d.t), mk('p', '', plain(d.html)));
-    el.append(i, box);
-    el.onclick = () => peek(d);
-    el.onkeydown = e => { if (e.key === 'Enter') peek(d); };
-    $(d.k === 'Notícias' ? 'dockR' : 'dockL').appendChild(el);
+function summary(d){ // rótulo, valor em destaque e detalhe a partir do html do card
+  const t = frag(d.html), lis = [...t.querySelectorAll('li')].map(li => li.textContent.trim());
+  const text = () => [...t.children].map(e => e.textContent.trim()).filter(Boolean).join(' · ');
+  const big = t.querySelector('.big');
+  if (d.k === 'Notícias') return {rot: d.t, val: lis[0] || d.t, det: ''};
+  if (lis.length){ // ex.: "Dólar: R$ 5,43 (0,32%)"
+    const [n, ...v] = lis[0].split(':');
+    return v.length ? {rot: `${d.t} · ${n}`, val: v.join(':').trim(), det: lis.slice(1).join(' · ')}
+                    : {rot: d.t, val: lis[0], det: lis.slice(1).join(' · ')};
+  }
+  if (big){ const v = big.textContent.trim(); big.remove(); return {rot: `${d.k} · ${d.t}`, val: v, det: text()}; }
+  return {rot: d.k, val: d.t, det: text()};
+}
+function renderPanels(){
+  $('esq').innerHTML = ''; $('dir').innerHTML = '';
+  DATA.forEach((d, i) => {
+    const s = summary(d), news = d.k === 'Notícias';
+    const b = mk('button', 'pnl' + (news ? ' manchete' : '')); b.type = 'button'; b.id = 'p-' + d.id;
+    b.setAttribute('aria-label', `${s.rot}: ${s.val}. Ouvir de novo`);
+    const box = mk('div');
+    if (d.image){ const m = new Image(); m.className = 'mini'; m.alt = ''; m.referrerPolicy = 'no-referrer'; m.onerror = () => m.remove(); m.src = d.image; box.append(m); }
+    box.append(mk('span', 'rot', s.rot), mk('span', 'cod', 'MOD-' + String(i + 1).padStart(2, '0')), mk('span', 'val', s.val));
+    if (s.det && !news) box.append(mk('span', 'det', s.det));
+    b.append(box);
+    b.onclick = () => peek(d);
+    $(news || d.id === 'mercado' ? 'dir' : 'esq').append(b);
+    if (d.id === 'clima' && s.val){ $('externa').textContent = s.val.replace('°', ' °C'); $('local').textContent = d.t.toUpperCase(); }
   });
 }
 async function load(){
@@ -108,63 +191,63 @@ async function load(){
   } catch (e) {
     DATA = [{id:'erro', icon:'news', k:'Erro', t:'Sem conexão com o backend', html:'<p>Inicie o servidor com uvicorn.</p>', say:'Não consegui falar com o servidor.'}];
   }
-  renderSlots();
+  renderPanels();
 }
 load();
+const mark = id => document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('atual', p.id === 'p-' + id));
 
-// ---- Card em destaque: aparece na frente do orbe e depois voa para o painel
-function buildFeature(d){
-  const f = mk('div', 'feature');
-  const head = mk('div', 'f-head');
-  const i = mk('span', 'ico'); i.innerHTML = ico(d.icon);
-  head.append(i, mk('small', '', d.k));
-  f.append(head, mk('h2', '', d.t));
-  if (d.image){
-    const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer';
-    im.onerror = () => im.remove(); im.src = d.image; f.appendChild(im);
+// ---- Projeção: a imagem da notícia aparece na frente do reator enquanto o Jarvis fala dela
+function project(d){
+  unproject();
+  if (!d.image) return;
+  const i = DATA.indexOf(d), s = summary(d);
+  const p = mk('figure', 'proj'); p.id = 'proj'; p.style.margin = 0;
+  p.innerHTML = '<div><div class="tela"><i class="feixe"></i></div><figcaption><div class="rot"><span></span><span></span></div><h2></h2></figcaption></div>';
+  const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer';
+  im.onerror = () => p.querySelector('.tela').remove(); im.src = d.image;
+  p.querySelector('.tela').prepend(im);
+  const r = p.querySelectorAll('.rot span'); r[0].textContent = s.rot; r[1].textContent = 'MOD-' + String(i + 1).padStart(2, '0');
+  p.querySelector('h2').textContent = s.val;
+  document.querySelector('.centro').append(p); document.body.classList.add('projetando');
+  if (matchMedia('(max-width: 900px)').matches) document.querySelector('.centro').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'center'});
+  if (!reduce){
+    p.animate([{clipPath:'inset(0 0 100% 0)', opacity:.4}, {clipPath:'inset(0 0 0 0)', opacity:1}], {duration:650, easing:'cubic-bezier(.3,.7,.2,1)'});
+    p.querySelector('.feixe').animate([{top:'0%', opacity:1}, {top:'100%', opacity:1}, {top:'100%', opacity:0}], {duration:900, easing:'ease-in-out'});
   }
-  const body = mk('div', 'f-body'); body.innerHTML = d.html; f.appendChild(body);
-  return f;
 }
-function showFeature(d){
-  const f = buildFeature(d);
-  $('feature').appendChild(f);
-  f.animate([{opacity:0, transform:'translateY(28px) scale(.9)'}, {opacity:1, transform:'none'}],
-            {duration: reduce ? 1 : 480, easing:'cubic-bezier(.2,.8,.2,1)', fill:'backwards'});
-  return f;
-}
-async function dockFeature(f, d){
-  const slot = $('s-' + d.id);
-  if (!slot){ f.remove(); return; }
-  const a = f.getBoundingClientRect(), b = slot.getBoundingClientRect();
-  f.style.transformOrigin = '0 0';
-  const anim = f.animate([
-    {transform:'none', opacity:1},
-    {opacity:1, offset:.55},
-    {transform:`translate(${b.left - a.left}px,${b.top - a.top}px) scale(${b.width / a.width},${b.height / a.height})`, opacity:0}
-  ], {duration: reduce ? 1 : 700, easing:'cubic-bezier(.6,0,.2,1)', fill:'forwards'});
-  setTimeout(() => slot.classList.add('shown'), reduce ? 0 : 420);
-  try { await anim.finished; } catch (e) {}
-  f.remove();
+function unproject(){
+  const p = $('proj'); document.body.classList.remove('projetando');
+  if (!p) return;
+  p.id = '';
+  if (reduce) return p.remove();
+  p.animate([{opacity:1, transform:'translate(-50%,-50%)'}, {opacity:0, transform:'translate(-50%,-50%) scale(.96)'}], {duration:300}).finished.then(() => p.remove(), () => p.remove());
 }
 let peeking = false;
-async function peek(d){ // clicar num painel mostra o card de novo
-  if (running || peeking) return; peeking = true;
-  const slot = $('s-' + d.id); slot.classList.remove('shown');
-  const f = showFeature(d); await wait(4000); await dockFeature(f, d);
-  peeking = false;
+async function peek(d){ // clicar num painel mostra de novo
+  if (running || busy || peeking) return; peeking = true;
+  mark(d.id); project(d); line('JARVIS', d.say);
+  await wait(d.image ? 5000 : 3500);
+  mark(null); unproject(); peeking = false;
 }
 
-// ---- Estados
-function setState(s){
-  state = s;
-  $('status').textContent = LABEL[s];
-  speed = {espera:.15, ouvindo:.3, pensando:1.2, falando:.4}[s];
-  target = {espera:.04, ouvindo:.1, pensando:.08, falando:.16}[s];
+// ---- Transcrição: a fala é digitada no ritmo do áudio
+let typing = 0;
+function line(who, text, cls){
+  typing++;
+  const f = $('fala'); f.textContent = '';
+  const t = mk('span', '', text || '');
+  f.append(mk('span', 'quem ' + (cls || ''), who), t, mk('span', 'cur'));
+  return t;
 }
-setState('espera');
+async function type(text, ms){
+  const out = line('JARVIS', reduce ? text : ''), my = typing;
+  if (reduce) return;
+  const step = Math.max(14, Math.min(60, ms / text.length));
+  for (const ch of text){ if (my !== typing) return; out.textContent += ch; await wait(step); }
+}
+const clearLine = () => { typing++; $('fala').textContent = ''; };
 
-// ---- Áudio: toca a voz pelo AudioContext e mede o volume para animar o orbe
+// ---- Áudio: toca a voz pelo AudioContext e mede o volume para animar o reator
 let actx, analyser, buf, live = false;
 function initAudio(){
   if (actx) { actx.resume(); return; }
@@ -189,6 +272,11 @@ function play(buffer){
     live = true; src.start();
   });
 }
+async function say(text, audio){ // fala com áudio, ou só legenda se o TTS falhar
+  setState('falando');
+  if (audio){ type(text, audio.duration * 1000 * .92); await play(audio); }
+  else { const ms = 2500 + text.length * 30; type(text, ms * .8); await wait(ms); }
+}
 
 // ---- Briefing
 let running = false;
@@ -196,21 +284,17 @@ async function runBriefing(){
   if (running || peeking || busy) return; running = true;
   pauseRec(); // não deixa o Jarvis ouvir a própria voz
   initAudio(); await actx.resume();
-  setState('pensando'); capEl.textContent = 'Preparando seu briefing...';
+  setState('pensando'); line('JARVIS', 'Compilando o briefing...');
   await load();
-  const urls = await Promise.all(DATA.map(d => fetchAudio(d.say))); // gera todas as falas enquanto "pensa"
+  const audios = await Promise.all(DATA.map(d => fetchAudio(d.say))); // gera todas as falas enquanto processa
   for (let i = 0; i < DATA.length; i++){
     const d = DATA[i];
-    setState('falando'); capEl.textContent = d.say;
-    const f = showFeature(d);
-    try {
-      if (!urls[i]) throw new Error('sem áudio');
-      await play(urls[i]);
-    } catch (e) { live = false; await wait(2800 + d.say.length * 30); } // sem áudio: só legenda
+    mark(d.id); project(d);
+    try { await say(d.say, audios[i]); } catch (e) { live = false; }
     await wait(350);
-    await dockFeature(f, d);
   }
-  capEl.textContent = ''; running = false; lastActive = Date.now();
+  mark(null); unproject(); clearLine();
+  running = false; lastActive = Date.now();
   resumeRec();
   if (!listening) setState('espera');
 }
@@ -223,7 +307,7 @@ async function converse(q){
   if (running || busy) return; busy = true;
   pauseRec();
   initAudio(); await actx.resume();
-  setState('pensando'); capEl.textContent = q;
+  setState('pensando'); line('VOCÊ', q, 'voce');
   try {
     const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({messages:[...history, {role:'user', content:q}]})});
@@ -231,13 +315,12 @@ async function converse(q){
     const {reply} = await r.json();
     history.push({role:'user', content:q}, {role:'assistant', content:reply});
     if (history.length > 12) history.splice(0, history.length - 12);
-    setState('falando'); capEl.textContent = reply;
-    const audio = await fetchAudio(reply);
-    if (audio) await play(audio); else await wait(2500 + reply.length * 30);
+    await say(reply, await fetchAudio(reply));
   } catch (e) {
-    live = false; setState('espera'); capEl.textContent = e.message; await wait(4000);
+    live = false; setState('espera'); line('ERRO', e.message); await wait(4000);
   }
-  capEl.textContent = ''; busy = false; lastActive = Date.now();
+  await wait(1500); clearLine();
+  busy = false; lastActive = Date.now();
   resumeRec();
   if (!listening) setState('espera');
 }
@@ -259,7 +342,7 @@ function startRec(){
       text += e.results[i][0].transcript;
       if (e.results[i].isFinal) final = true;
     }
-    capEl.textContent = text;
+    line('VOCÊ', text, 'voce');
     if (/bom dia/i.test(text)){ runBriefing(); return; }
     // perguntas: precisam da palavra "Jarvis" ou vir logo após uma interação (25 s)
     const awake = /jarvis/i.test(text) || Date.now() - lastActive < 25000;
@@ -271,7 +354,7 @@ function startRec(){
   rec.onerror = e => {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
       stopListening();
-      capEl.textContent = 'Permita o uso do microfone nas configurações do navegador.';
+      line('JARVIS', 'Permita o uso do microfone nas configurações do navegador.');
     }
   };
   rec.onend = () => { if (listening && !paused) { try { rec.start(); } catch (e) {} } };
@@ -282,51 +365,106 @@ function resumeRec(){ paused = false; if (listening) { startRec(); setState('ouv
 function stopListening(){
   listening = false; paused = false;
   if (rec) try { rec.stop(); } catch (e) {}
-  micBtn.textContent = 'Ativar microfone'; micBtn.classList.remove('on');
+  micBtn.setAttribute('aria-pressed', 'false');
   if (!running) setState('espera');
 }
 micBtn.onclick = () => {
   if (listening) return stopListening();
-  if (!SR){ capEl.textContent = 'Este navegador não suporta reconhecimento de voz. Use Chrome ou Safari.'; return; }
+  if (!SR){ line('JARVIS', 'Este navegador não suporta reconhecimento de voz. Use Chrome ou Safari.'); return; }
   initAudio(); // libera o áudio enquanto há um clique do usuário
-  listening = true;
-  micBtn.textContent = 'Desativar microfone'; micBtn.classList.add('on');
-  capEl.textContent = 'Diga "bom dia"';
+  listening = true; micBtn.setAttribute('aria-pressed', 'true');
+  line('JARVIS', 'Ouvindo. Diga “bom dia” para começar.');
   setState('ouvindo'); startRec();
 };
 
-// ---- Orbe (canvas)
-const cv = $('orb'), ctx = cv.getContext('2d');
-const RINGS = Array.from({length:9}, (_, i) => ({ph:Math.random()*6.28, tilt:Math.random()*3.14, k:2+Math.floor(Math.random()*4), r:.62+Math.random()*.3, w:i%3+1}));
-let t = 0, env = 0;
-function resize(){ const d = devicePixelRatio || 1, s = cv.clientWidth; cv.width = cv.height = s * d; ctx.setTransform(d,0,0,d,0,0); }
+// ---- Reator arc (canvas)
+const cv = $('reator'), ctx = cv.getContext('2d');
+let t = 0, amp = 0, sweep = 0;
+const BARS = Array.from({length:72}, () => Math.random());
+function resize(){ const r = devicePixelRatio || 1, s = cv.clientWidth; cv.width = cv.height = s * r; ctx.setTransform(r,0,0,r,0,0); }
 addEventListener('resize', resize); resize();
-function frame(){
-  const s = cv.clientWidth, c = s / 2;
-  t += (reduce ? 0 : speed) * 0.016;
-  if (live) {
+function arc(c, r, a0, a1, w, col, blur){ ctx.beginPath(); ctx.arc(c, c, r, a0, a1); ctx.lineWidth = w; ctx.strokeStyle = col; ctx.shadowBlur = blur || 0; ctx.stroke(); }
+function draw(){
+  const s = cv.clientWidth, c = s / 2, R = c * .96;
+  if (live){ // volume real da voz
     analyser.getByteTimeDomainData(buf);
     let sum = 0; for (const v of buf){ const x = (v - 128) / 128; sum += x * x; }
-    env = Math.min(1, Math.sqrt(sum / buf.length) * 4);
-  } else if (state === 'falando' && Math.random() < .12) env = Math.random();
-  amp += (target * (state === 'falando' ? .5 + env : 1) - amp) * .08;
+    pulse = Math.max(pulse, Math.min(1, Math.sqrt(sum / buf.length) * 4));
+  } else if (state === 'falando' && Math.random() < .12) pulse = Math.random();
+  const goal = {espera:.12, ouvindo:.35, pensando:.3, falando:.45 + pulse * .55}[state];
+  amp += (goal - amp) * .1; pulse *= .92;
+  t += reduce ? 0 : {espera:.004, ouvindo:.008, pensando:.03, falando:.012}[state];
+  const H = state === 'falando' ? '255,184,48' : '70,210,255';
   ctx.clearRect(0, 0, s, s);
-  ctx.globalCompositeOperation = 'lighter';
-  RINGS.forEach((g, i) => {
+  ctx.shadowColor = `rgba(${H},.9)`;
+
+  // anel externo de marcações
+  ctx.save(); ctx.translate(c, c); ctx.rotate(t * .6);
+  for (let i = 0; i < 120; i++){
+    const a = i / 120 * Math.PI * 2, big = i % 10 === 0;
     ctx.beginPath();
-    for (let a = 0; a <= 6.3; a += .04){
-      const wob = Math.sin(a * g.k + t * (1 + i * .15) + g.ph) * amp + Math.sin(a * 2 - t + g.ph) * amp * .5;
-      const r = (g.r + wob) * c * .95;
-      const x = Math.cos(a) * r, y = Math.sin(a) * r * (.75 + .25 * Math.cos(g.tilt + t * .3));
-      const rx = x * Math.cos(g.tilt) - y * Math.sin(g.tilt), ry = x * Math.sin(g.tilt) + y * Math.cos(g.tilt);
-      a ? ctx.lineTo(c + rx, c + ry) : ctx.moveTo(c + rx, c + ry);
-    }
-    ctx.strokeStyle = `rgba(${60 + i * 8},${140 + i * 8},255,${.35 + g.w * .1})`;
-    ctx.lineWidth = g.w * .6; ctx.shadowColor = '#2f7bff'; ctx.shadowBlur = 12; ctx.stroke();
-  });
-  requestAnimationFrame(frame);
+    ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R);
+    ctx.lineTo(Math.cos(a) * (R - (big ? 14 : 6)), Math.sin(a) * (R - (big ? 14 : 6)));
+    ctx.lineWidth = big ? 2 : 1; ctx.strokeStyle = `rgba(70,210,255,${big ? .8 : .35})`; ctx.shadowBlur = 0; ctx.stroke();
+  }
+  ctx.restore();
+
+  // arcos segmentados girando em sentidos opostos
+  for (let i = 0; i < 6; i++){ const a = -t * 1.4 + i * Math.PI / 3; arc(c, R * .86, a, a + Math.PI / 4.2, 3, 'rgba(70,210,255,.75)', 8); }
+  for (let i = 0; i < 3; i++){ const a = t * 2.2 + i * Math.PI * 2 / 3; arc(c, R * .8, a, a + Math.PI / 2.4, 1.5, 'rgba(184,241,255,.5)'); }
+
+  // barras de espectro (voz)
+  ctx.save(); ctx.translate(c, c);
+  for (let i = 0; i < BARS.length; i++){
+    if (!reduce && Math.random() < .25) BARS[i] = Math.random();
+    const a = i / BARS.length * Math.PI * 2 + t * .3, r0 = R * .62, len = R * (.02 + BARS[i] * amp * .14);
+    ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * (r0 + len), Math.sin(a) * (r0 + len));
+    ctx.lineWidth = 2.2; ctx.strokeStyle = `rgba(${H},.85)`; ctx.shadowBlur = 6; ctx.stroke();
+  }
+  ctx.restore();
+
+  // varredura de radar enquanto processa
+  if (state === 'pensando'){
+    sweep += reduce ? 0 : .07;
+    const g = ctx.createConicGradient(sweep, c, c);
+    g.addColorStop(0, 'rgba(70,210,255,.35)'); g.addColorStop(.12, 'rgba(70,210,255,0)'); g.addColorStop(1, 'rgba(70,210,255,0)');
+    ctx.beginPath(); ctx.arc(c, c, R * .78, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  }
+
+  // carcaça e bobinas do reator
+  arc(c, R * .58, 0, Math.PI * 2, 1.5, 'rgba(70,210,255,.6)');
+  arc(c, R * .4, 0, Math.PI * 2, 1, 'rgba(70,210,255,.4)');
+  ctx.save(); ctx.translate(c, c);
+  for (let i = 0; i < 10; i++){
+    ctx.rotate(Math.PI / 5);
+    ctx.beginPath(); ctx.moveTo(-R * .06, -R * .55); ctx.lineTo(R * .06, -R * .55); ctx.lineTo(R * .04, -R * .43); ctx.lineTo(-R * .04, -R * .43); ctx.closePath();
+    ctx.fillStyle = `rgba(${H},${.25 + amp * .6})`; ctx.shadowBlur = 14; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = `rgba(${H},.9)`; ctx.stroke();
+  }
+  // triângulo central (Mark VI)
+  const tr = R * (.3 + amp * .03);
+  ctx.beginPath();
+  for (let i = 0; i < 3; i++){ const a = -Math.PI / 2 + i * Math.PI * 2 / 3; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * tr, Math.sin(a) * tr); }
+  ctx.closePath(); ctx.lineWidth = 4; ctx.strokeStyle = `rgba(${H},1)`; ctx.shadowBlur = 24; ctx.stroke();
+  ctx.restore();
+
+  // núcleo
+  const core = ctx.createRadialGradient(c, c, 0, c, c, R * .36);
+  core.addColorStop(0, `rgba(255,255,255,${.75 + amp * .25})`);
+  core.addColorStop(.25, `rgba(${H},${.5 + amp * .4})`);
+  core.addColorStop(1, `rgba(${H},0)`);
+  ctx.shadowBlur = 0; ctx.beginPath(); ctx.arc(c, c, R * .36, 0, Math.PI * 2); ctx.fillStyle = core; ctx.fill();
+
+  requestAnimationFrame(draw);
 }
-frame();
+draw();
+
+// ---- Relógio
+function tick(){ const n = new Date();
+  $('hora').textContent = n.toLocaleTimeString('pt-BR');
+  $('data').textContent = n.toLocaleDateString('pt-BR').replace(/\//g, '.'); }
+setInterval(tick, 1000); tick();
+line('JARVIS', 'Todos os sistemas operacionais, senhor. Diga “bom dia” ou toque em Briefing.');
 </script>
 </body>
 </html>
