@@ -1,7 +1,8 @@
-"""Google Agenda e Gmail, somente leitura, com OAuth local (sem bibliotecas do Google: só httpx).
+"""Google Agenda e Gmail com OAuth local (sem bibliotecas do Google: só httpx).
 
 Credencial do cliente e token ficam em ~/Library/Application Support/Jarvis (ou JARVIS_DATA_DIR),
-fora do repositório. Escopos: calendar.readonly e gmail.readonly. Nada aqui envia, apaga ou altera.
+fora do repositório. Escopos: calendar.readonly, gmail.readonly e calendar.events. A única escrita é
+criar (e apagar, se o lembrete for cancelado) eventos de lembretes que o usuário pediu para pôr na agenda.
 
 "E-mails importantes" = não lidos, das últimas 24 h, marcados como Importantes pelo Gmail,
 fora de Promoções e Social (ajustável em GMAIL_QUERY).
@@ -29,7 +30,8 @@ from .memory import DATA_DIR
 
 CLIENT_FILE = DATA_DIR / "google_client.json"
 TOKEN_FILE = DATA_DIR / "google_token.json"
-SCOPES = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly"
+SCOPES = ("https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly "
+          "https://www.googleapis.com/auth/calendar.events")
 GMAIL_QUERY = os.getenv("GMAIL_QUERY", "is:unread is:important newer_than:1d -category:promotions -category:social")
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -67,6 +69,14 @@ def _client() -> dict:
 
 def connected() -> bool:
     return TOKEN_FILE.exists() and CLIENT_FILE.exists()
+
+
+def can_write_calendar() -> bool:
+    """O token atual inclui calendar.events? Tokens antigos (só leitura) precisam reconectar."""
+    try:
+        return "calendar.events" in json.loads(TOKEN_FILE.read_text(encoding="utf-8")).get("scope", "")
+    except (FileNotFoundError, ValueError):
+        return False
 
 
 async def _access_token() -> str:
@@ -175,6 +185,32 @@ async def important_emails(query: str = "", n: int = 5) -> list:
         return out
 
     return await _cached(f"mail{q}{n}", 120, fetch)
+
+
+async def create_event(titulo: str, inicio: datetime, minutos: int = 15) -> dict:
+    """Cria um evento na agenda principal, com aviso do Google na hora. Devolve {"id", "link"}."""
+    if not can_write_calendar():
+        raise NotConnected("sem permissão de escrita na agenda")
+    body = {"summary": titulo[:200], "description": "Criado pelo Jarvis a partir de um lembrete.",
+            "start": {"dateTime": inicio.isoformat()},
+            "end": {"dateTime": (inicio + timedelta(minutes=minutos)).isoformat()},
+            "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 0}]}}
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(f"{CAL}/calendars/primary/events", json=body,
+                              headers={"Authorization": f"Bearer {await _access_token()}"})
+    r.raise_for_status()
+    _cache.clear()
+    d = r.json()
+    return {"id": d["id"], "link": d.get("htmlLink", "")}
+
+
+async def delete_event(event_id: str) -> bool:
+    """Apaga um evento que o próprio Jarvis criou (vai para a lixeira do Google Agenda)."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.delete(f"{CAL}/calendars/primary/events/{quote(event_id, safe='')}",
+                                headers={"Authorization": f"Bearer {await _access_token()}"})
+    _cache.clear()
+    return r.status_code in (200, 204, 404, 410)
 
 
 # ---- texto ----
@@ -384,15 +420,17 @@ async def callback(state: str = "", code: str = "", error: str = ""):
     _write(TOKEN_FILE, {"refresh_token": d.get("refresh_token"), "access_token": d["access_token"],
                         "expires_at": time.time() + d.get("expires_in", 3600), "scope": granted})
     _cache.clear()
-    missing = [s for s in ("calendar.readonly", "gmail.readonly") if s not in granted]
+    missing = [s for s in ("calendar.readonly", "gmail.readonly", "calendar.events") if s not in granted]
     warn = (f"<p>Atenção: você não marcou {', '.join(missing)}. Essa parte vai ficar desligada.</p>"
             if missing else "")
-    return _page(f"<p>Conectado. O Jarvis agora lê sua agenda e seus e-mails (somente leitura).</p>{warn}")
+    return _page("<p>Conectado. O Jarvis lê sua agenda e seus e-mails e pode criar eventos de lembretes "
+                 f"quando você pedir (e-mails continuam só leitura).</p>{warn}")
 
 
 @router.get("/api/google/status")
 def status():
-    return {"credencial": CLIENT_FILE.exists(), "conectado": connected(), "pasta": str(DATA_DIR),
+    return {"credencial": CLIENT_FILE.exists(), "conectado": connected(), "agenda_escrita": can_write_calendar(),
+            "pasta": str(DATA_DIR),
             "criterio_emails": GMAIL_QUERY}
 
 

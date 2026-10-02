@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from . import google_data, mac_control, memory, web
+from . import google_data, mac_control, memory, reminders, web
 
 APP_DIRS = [
     Path("/Applications"), Path("/Applications/Utilities"),
@@ -156,6 +156,7 @@ TOOLS = {
 TOOLS.update(memory.TOOLS)  # lembrar / esquecer
 TOOLS.update(google_data.TOOLS)  # ver_agenda / ver_emails (somente leitura)
 TOOLS.update(mac_control.TOOLS)  # Spotify e brilho da tela
+TOOLS.update(reminders.TOOLS)  # lembretes e timers falados
 
 
 def schemas(active: dict) -> list:

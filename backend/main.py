@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from . import google_data, llm, memory, memory_api, tools
+from . import google_data, llm, memory, memory_api, reminders_api, tools
 
 load_dotenv()
 
@@ -64,6 +64,7 @@ FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 app = FastAPI(title="Jarvis")
 app.include_router(memory_api.router)
 app.include_router(google_data.router)  # /google/conectar
+app.include_router(reminders_api.router)  # /api/lembretes e o laço que dispara os alertas
 
 
 def _wicon(code: int) -> str:

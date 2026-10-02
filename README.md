@@ -24,7 +24,16 @@ Abra http://127.0.0.1:8000
 5. Com o Jarvis rodando, abra http://127.0.0.1:8000/google/conectar, envie o JSON e autorize.
 
 Credencial e token ficam em `~/Library/Application Support/Jarvis` (fora do repositório). Escopos:
-`calendar.readonly` e `gmail.readonly`; o Jarvis não envia, apaga nem altera nada.
+`calendar.readonly`, `gmail.readonly` e `calendar.events`. E-mails são só leitura; na agenda, o Jarvis só cria
+um evento quando você pede para pôr um lembrete na agenda (e o apaga se o lembrete for cancelado).
+Quem conectou antes dessa permissão precisa reconectar uma vez em /google/conectar.
+
+## Lembretes e timers
+
+"Me lembra de X às 18h", "timer de 10 minutos", "quais lembretes eu tenho", "cancela o do X". Na hora, o HUD fala
+o aviso e o macOS mostra uma notificação (desligue com `REMINDER_NOTIFY=off`). Ficam em
+`~/Library/Application Support/Jarvis/lembretes.json` e sobrevivem a reinícios. Fuso em `JARVIS_TZ`
+(padrão `America/Recife`).
 "E-mails importantes" = não lidos, últimas 24 h, marcados como Importantes pelo Gmail, fora de Promoções e Social
 (mude com `GMAIL_QUERY` no `.env`). Com o app em modo *Teste*, o Google derruba o acesso a cada 7 dias; para não
 reconectar toda semana, clique em *Publicar app* no Público-alvo (o Google mostra um aviso de app não verificado
