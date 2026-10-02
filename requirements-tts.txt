@@ -1,0 +1,7 @@
+# Voz local (Chatterbox). Precisa de Python 3.11, num ambiente separado:
+#   uv venv --python 3.11 .venv-tts && VIRTUAL_ENV=.venv-tts uv pip install -r requirements-tts.txt
+chatterbox-tts==0.1.7
+setuptools<81
+fastapi
+uvicorn[standard]
+python-dotenv
