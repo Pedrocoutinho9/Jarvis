@@ -39,6 +39,25 @@ o aviso e o macOS mostra uma notificação (desligue com `REMINDER_NOTIFY=off`).
 reconectar toda semana, clique em *Publicar app* no Público-alvo (o Google mostra um aviso de app não verificado
 no login, é só seguir em *Avançado*).
 
+## Jarvis sozinho de manhã
+
+```bash
+scripts/autostart.sh ligar      # sobe o Jarvis em todo login (e já agora)
+scripts/autostart.sh status     # está rodando? últimas linhas do log
+scripts/autostart.sh desligar   # para e remove
+```
+
+Cria `~/Applications/Jarvis.app` (um lançador mínimo: o macOS só deixa um app ler a pasta Mesa, e pergunta uma
+vez "Jarvis quer acessar a pasta Mesa", é só permitir) e o LaunchAgent `~/Library/LaunchAgents/local.jarvis.plist`,
+que no login garante o Ollama no ar e sobe o servidor sem `--reload`. Log em `~/Library/Logs/Jarvis/jarvis.log`.
+Se já houver um Jarvis na porta 8000 (o `uvicorn --reload` aberto à mão), ele não sobe outro.
+
+De manhã (5h às 12h), quando o Mac liga ou acorda e você está usando, o Jarvis abre o HUD no Safari e fala o
+briefing sozinho, uma vez por dia. Se o Safari bloquear o som por falta de clique, a voz sai pelo Mac (`afplay`);
+para a voz sair pelo próprio Safari, em *Safari > Ajustes > Sites > Reprodução Automática* ponha 127.0.0.1 em
+*Permitir Toda a Reprodução Automática*. No `.env`: `AUTO_BRIEFING=off` desliga só o briefing automático;
+`AUTO_BRIEFING_INICIO` e `AUTO_BRIEFING_FIM` mudam a janela (horas). Controle em `backend/autobriefing.py`.
+
 ## Roadmap
 - [x] Interface com orbe e cards
 - [x] Backend FastAPI, clima (Open-Meteo) e notícias (RSS)
