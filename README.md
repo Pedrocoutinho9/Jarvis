@@ -39,6 +39,12 @@ o aviso e o macOS mostra uma notificação (desligue com `REMINDER_NOTIFY=off`).
 reconectar toda semana, clique em *Publicar app* no Público-alvo (o Google mostra um aviso de app não verificado
 no login, é só seguir em *Avançado*).
 
+## Abrir com dois cliques
+
+`scripts/autostart.sh app` cria `~/Applications/Jarvis.app` (o `ligar` também cria). Com dois cliques ele sobe o
+servidor da pasta com `--reload`, se a porta 8000 estiver livre, e traz o HUD para a frente no Safari, reaproveitando
+a aba aberta. Código novo vale na hora, sem recompilar o app. Detalhes em `scripts/abrir.sh`.
+
 ## Jarvis sozinho de manhã
 
 ```bash

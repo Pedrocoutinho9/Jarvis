@@ -2,6 +2,7 @@
 // O macOS não deixa processos do launchd lerem a pasta Mesa (Desktop) sem permissão, e só um app de verdade
 // consegue pedir essa permissão. Este app roda o script passado em argv[1] como filho, repassa o SIGTERM do
 // launchctl e sai com o mesmo código do filho; o filho herda a permissão de "Jarvis" na pasta Mesa.
+// Aberto com dois cliques (sem argumentos) roda JARVIS_ABRIR (scripts/abrir.sh, definido na compilação).
 #include <signal.h>
 #include <spawn.h>
 #include <stdio.h>
@@ -10,8 +11,13 @@ extern char **environ;
 static pid_t child = 0;
 static void forward(int sig){ if (child > 0) kill(child, sig); }
 int main(int argc, char *argv[]){
+#ifdef JARVIS_ABRIR
+  char *script = argc < 2 ? JARVIS_ABRIR : argv[1];
+#else
   if (argc < 2){ fprintf(stderr, "uso: Jarvis <script>\n"); return 64; }
-  char *args[] = {"/bin/zsh", argv[1], NULL};
+  char *script = argv[1];
+#endif
+  char *args[] = {"/bin/zsh", script, NULL};
   signal(SIGTERM, forward); signal(SIGINT, forward); signal(SIGHUP, forward);
   if (posix_spawn(&child, "/bin/zsh", NULL, NULL, args, environ) != 0){ perror("posix_spawn"); return 71; }
   int status = 0;
