@@ -3,109 +3,137 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jarvis</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap">
+<title>Central do Pedro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: HUD do capacete. O reator arc no centro é o rosto do Jarvis; painéis holográficos chanfrados nas laterais; transcrição em linha de comando embaixo.  */
+/* Layout: central pessoal do Pedro. Globo no centro com a rota Recife → Vancouver, o pulso da voz e a assinatura num anel de cifra;
+   no topo, a rota Recife → Vancouver com os dois relógios; painéis como canais seguros; legenda em terminal. */
 :root{
-  --vazio:#02080F;     /* fundo do capacete */
-  --holo:#46D2FF;      /* linhas e texto holográfico */
-  --holo-forte:#B8F1FF;/* núcleo e valores */
-  --holo-fraco:#1E5F7D;/* traços secundários */
-  --ouro:#FFB830;      /* dourado da armadura: o que está sendo falado */
-  --rubi:#FF4D3D;      /* vermelho da armadura: alerta */
-  --painel:rgba(5,22,38,.92);
-  --display:"Oxanium","Eurostile","Bank Gothic","Segoe UI",system-ui,sans-serif;
-  --texto:"Rajdhani","Arial Narrow","Segoe UI",system-ui,sans-serif;
+  --vazio:#020B12;      /* fundo: Atlântico à noite */
+  --holo:#4FE0EA;       /* linhas: azul glacial do Pacífico */
+  --holo-forte:#D2FBFF; /* núcleo e valores */
+  --holo-fraco:#185760; /* traços secundários */
+  --ouro:#E3A35E;       /* bronze de Ítaca: o que está sendo falado */
+  --rubi:#FF5B4F;       /* alerta */
+  --coral:#FF8E62;      /* pôr do sol de Recife, só na rota */
+  --painel:rgba(3,19,28,.9);
+  --display:"Chakra Petch","Eurostile","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:radial-gradient(ellipse 60% 55% at 50% 42%,#062238 0%,var(--vazio) 70%) var(--vazio);color:var(--holo);font-family:var(--texto);font-weight:500;font-size:16px;overflow-x:hidden}
-/* scanlines e vinheta */
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(0deg,rgba(70,210,255,.035) 0 1px,transparent 1px 3px)}
+body{margin:0;color:var(--holo);font-family:var(--display);font-weight:500;font-size:16px;overflow-x:hidden;
+  background:radial-gradient(ellipse 60% 55% at 50% 44%,rgba(6,40,54,.95) 0%,rgba(2,11,18,0) 70%),
+             radial-gradient(circle,rgba(79,224,234,.08) 1px,transparent 1.3px) 0 0/24px 24px,var(--vazio)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(0deg,rgba(79,224,234,.03) 0 1px,transparent 1px 3px)}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;box-shadow:inset 0 0 160px 40px rgba(0,0,0,.75)}
 
 .hud{position:relative;min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);grid-template-rows:auto 1fr auto auto;grid-template-areas:"topo topo topo" "esq centro dir" "fala fala fala" "cmd cmd cmd";gap:14px 28px;padding-inline:clamp(16px,3vw,44px);padding-block:clamp(16px,2.4vh,28px)}
-/* cantoneiras do visor */
-.canto{position:fixed;width:46px;height:46px;border:2px solid var(--holo);opacity:.55;pointer-events:none}
+/* cantoneiras do visor, com as coordenadas das duas cidades */
+.canto{position:fixed;width:46px;height:46px;border:2px solid var(--holo);opacity:.5;pointer-events:none}
 .canto.a{top:10px;left:10px;border-right:0;border-bottom:0}.canto.b{top:10px;right:10px;border-left:0;border-bottom:0}
 .canto.c{bottom:10px;left:10px;border-right:0;border-top:0}.canto.d{bottom:10px;right:10px;border-left:0;border-top:0}
+.coord{position:fixed;bottom:16px;font-family:var(--mono);font-size:.68rem;color:var(--holo-fraco);pointer-events:none;letter-spacing:.04em}
+.coord.rec{left:64px}.coord.yvr{right:64px}
 
-/* Topo */
-.topo{grid-area:topo;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--holo-fraco);padding-bottom:10px}
-.marca{font-family:var(--display);font-weight:700;font-size:clamp(1.3rem,2.4vw,1.9rem);letter-spacing:.42em;color:var(--holo-forte);text-shadow:0 0 18px rgba(70,210,255,.7)}
-.marca small{display:block;font-family:var(--texto);font-weight:600;font-size:.72rem;letter-spacing:.24em;color:var(--holo);opacity:.75;text-shadow:none}
-.tele{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--display);font-size:.82rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+/* Topo: selo, rota e telemetria */
+.topo{grid-area:topo;display:flex;justify-content:space-between;align-items:center;gap:18px 32px;flex-wrap:wrap;border-bottom:1px solid var(--holo-fraco);padding-bottom:12px}
+.marca{display:flex;align-items:center;gap:12px}
+.selo{width:42px;height:46px;flex:none;overflow:visible}
+.selo path{fill:rgba(79,224,234,.08);stroke:var(--holo);stroke-width:1.5}
+.selo text{fill:var(--holo-forte);font-family:var(--display);font-weight:700;font-size:22px;text-anchor:middle}
+.selo .mk{fill:var(--ouro);font-family:var(--mono);font-weight:500;font-size:9px}
+.marca b{display:block;font-weight:700;font-size:clamp(1.25rem,2.2vw,1.7rem);letter-spacing:.32em;color:var(--holo-forte);text-shadow:0 0 18px rgba(79,224,234,.6)}
+.marca small{display:block;font-size:.8rem;letter-spacing:.04em;color:var(--holo);opacity:.8}
+
+.rota{flex:1 1 300px;max-width:520px;display:flex;align-items:center;gap:14px;--p:0}
+.ponta{display:flex;flex-direction:column;gap:1px}
+.ponta.fim{text-align:right}
+.ponta span,.tele span{font-size:.72rem;letter-spacing:.06em;color:var(--holo-fraco)}
+.ponta b{font-family:var(--mono);font-weight:500;font-size:.88rem;color:var(--holo-forte);font-variant-numeric:tabular-nums}
+.ponta:first-child b{color:#FFC7A8}
+.trilho{position:relative;flex:1;height:2px;margin-bottom:14px;background:linear-gradient(90deg,var(--coral),var(--holo))}
+.trilho::after{content:"";position:absolute;top:-1px;bottom:-1px;right:0;left:calc(var(--p) * 100%);background:repeating-linear-gradient(90deg,var(--vazio) 0 5px,transparent 5px 9px)}
+.nave{position:absolute;z-index:1;left:calc(var(--p) * 100%);top:50%;width:10px;height:10px;transform:translate(-50%,-50%) rotate(45deg);border:2px solid var(--holo-forte);background:var(--vazio);box-shadow:0 0 10px rgba(79,224,234,.8)}
+#dias{position:absolute;left:calc(var(--p) * 100%);top:9px;transform:translateX(-50%);font-family:var(--mono);font-style:normal;font-size:.72rem;color:var(--holo);white-space:nowrap}
+
+.tele{display:flex;gap:22px;flex-wrap:wrap}
 .tele div{display:flex;flex-direction:column;gap:1px}
-.tele span{font-family:var(--texto);font-size:.68rem;letter-spacing:.22em;color:var(--holo-fraco);text-transform:uppercase}
-.tele b{color:var(--holo-forte);font-weight:600}
+.tele b{font-family:var(--mono);font-weight:500;font-size:.88rem;color:var(--holo-forte);font-variant-numeric:tabular-nums}
 
 /* Reator */
 .centro{grid-area:centro;display:grid;place-items:center;position:relative;min-height:0}
-#reator{width:min(54vh,100%);aspect-ratio:1;max-width:100%}
-.modo{position:absolute;bottom:2%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:600;font-size:.85rem;letter-spacing:.5em;text-indent:.5em;color:var(--holo-forte);white-space:nowrap}
+#reator{width:min(56vh,100%);aspect-ratio:1;max-width:100%}
+.modo{position:absolute;bottom:1%;left:50%;transform:translateX(-50%);font-weight:600;font-size:.85rem;letter-spacing:.45em;text-indent:.45em;color:var(--holo-forte);white-space:nowrap}
 body[data-s="falando"] .modo{color:var(--ouro)}
 
-/* Painéis holográficos chanfrados */
+/* Painéis: canais seguros, com a impressão digital de cada fonte no canto */
 .col{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0}
 .esq{grid-area:esq}.dir{grid-area:dir}
-.pnl{--c:14px;position:relative;padding:1px;background:linear-gradient(135deg,var(--holo) 0%,var(--holo-fraco) 45%,var(--holo-fraco) 70%,var(--holo) 100%);clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c));cursor:pointer;border:0;font:inherit;color:inherit;text-align:left;width:100%;display:block;transition:background .3s}
-.pnl>div{clip-path:inherit;background:var(--painel);backdrop-filter:blur(6px);padding:12px 16px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline}
+.pnl{--c:18px;--d:6px;position:relative;padding:1px;background:linear-gradient(200deg,var(--holo) 0%,var(--holo-fraco) 30%,var(--holo-fraco) 100%);clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,var(--d) 100%,0 calc(100% - var(--d)));cursor:pointer;border:0;font:inherit;color:inherit;text-align:left;width:100%;display:block;transition:background .3s}
+.pnl>div{clip-path:inherit;background:var(--painel);backdrop-filter:blur(6px);padding:11px 18px 13px 16px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline}
+.pnl:hover{background:linear-gradient(200deg,var(--holo-forte) 0%,var(--holo) 30%,var(--holo-fraco) 100%)}
 .pnl:focus-visible{outline:none;background:var(--holo-forte)}
-.pnl .rot{font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--holo);opacity:.8}
-.pnl .cod{font-family:var(--display);font-size:.66rem;color:var(--holo-fraco);letter-spacing:.1em}
-.pnl .val{grid-column:1/-1;font-family:var(--display);font-weight:600;font-size:1.65rem;line-height:1.1;color:var(--holo-forte);font-variant-numeric:tabular-nums}
-.pnl .det{grid-column:1/-1;font-size:.98rem;line-height:1.3;color:var(--holo);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.pnl.manchete .val{font-family:var(--texto);font-weight:700;font-size:1.12rem;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pnl .rot{font-size:.8rem;letter-spacing:.04em;color:var(--holo)}
+.pnl .cod{font-family:var(--mono);font-size:.66rem;color:var(--holo-fraco)}
+.pnl .cod::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--holo);box-shadow:0 0 6px var(--holo);vertical-align:1px}
+.pnl .val{grid-column:1/-1;font-weight:600;font-size:1.6rem;line-height:1.1;color:var(--holo-forte);font-variant-numeric:tabular-nums}
+.pnl .det{grid-column:1/-1;font-size:.95rem;line-height:1.3;color:var(--holo);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pnl.manchete .val{font-weight:600;font-size:1.05rem;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pnl .alerta{color:var(--rubi)}
 .pnl.atual{background:var(--ouro)}
 .pnl.atual .rot,.pnl.atual .val{color:var(--ouro)}
-.pnl.atual>div{background:rgba(34,22,4,.94)}
+.pnl.atual .cod::before{background:var(--ouro);box-shadow:0 0 6px var(--ouro)}
+.pnl.atual>div{background:rgba(30,18,6,.94)}
 
 /* Projeção holográfica com imagem (notícias) */
 #reator{transition:opacity .4s,transform .4s}
 body.projetando #reator{opacity:.28;transform:scale(.92)}
-.proj{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(460px,94%);z-index:2;--c:16px;padding:1px;background:linear-gradient(135deg,var(--holo),var(--holo-fraco) 50%,var(--holo));clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c))}
-.proj>div{clip-path:inherit;background:rgba(4,18,32,.94);padding:10px 10px 14px}
-.proj .tela{position:relative;aspect-ratio:16/9;overflow:hidden;background:#06192A}
+.proj{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(460px,94%);z-index:2;--c:20px;padding:1px;background:linear-gradient(200deg,var(--holo),var(--holo-fraco) 50%,var(--holo));clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,8px 100%,0 calc(100% - 8px))}
+.proj>div{clip-path:inherit;background:rgba(3,17,26,.95);padding:10px 10px 14px}
+.proj .tela{position:relative;aspect-ratio:16/9;overflow:hidden;background:#05202C}
 .proj img{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(.75) contrast(1.08)}
-.proj .tela::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(70,210,255,.18),rgba(70,210,255,0) 40%,rgba(2,8,15,.45)),repeating-linear-gradient(0deg,rgba(2,8,15,.28) 0 1px,transparent 1px 3px);pointer-events:none}
-.proj .feixe{position:absolute;left:0;right:0;height:3px;background:var(--holo-forte);box-shadow:0 0 18px 4px rgba(70,210,255,.8);top:0;opacity:0;z-index:1}
-.proj .rot{display:flex;justify-content:space-between;margin:10px 4px 2px;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ouro)}
-.proj .rot span:last-child{font-family:var(--display);color:var(--holo-fraco);letter-spacing:.1em}
-.proj h2{margin:0 4px;font-family:var(--texto);font-weight:700;font-size:1.3rem;line-height:1.2;color:var(--holo-forte);text-wrap:balance}
+.proj .tela::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(79,224,234,.18),rgba(79,224,234,0) 40%,rgba(2,11,18,.45)),repeating-linear-gradient(0deg,rgba(2,11,18,.28) 0 1px,transparent 1px 3px);pointer-events:none}
+.proj .feixe{position:absolute;left:0;right:0;height:3px;background:var(--holo-forte);box-shadow:0 0 18px 4px rgba(79,224,234,.8);top:0;opacity:0;z-index:1}
+.proj .rot{display:flex;justify-content:space-between;margin:10px 4px 2px;font-size:.8rem;letter-spacing:.04em;color:var(--ouro)}
+.proj .rot span:last-child{font-family:var(--mono);font-size:.7rem;color:var(--holo-fraco)}
+.proj h2{margin:0 4px;font-weight:600;font-size:1.25rem;line-height:1.2;color:var(--holo-forte);text-wrap:balance}
 .pnl.manchete:has(.mini)>div{grid-template-columns:72px minmax(0,1fr) auto}
 .pnl .mini{grid-row:1/3;width:72px;height:54px;object-fit:cover;filter:saturate(.7);align-self:center;border:1px solid var(--holo-fraco)}
 .pnl.manchete:has(.mini) .val{grid-column:2/-1}
 
-/* Transcrição */
-.fala{grid-area:fala;margin:0 auto;width:min(900px,100%);min-height:3.4em;font-size:clamp(1.1rem,2.1vw,1.45rem);line-height:1.4;color:var(--holo-forte);font-weight:600}
-.fala .quem{font-family:var(--display);font-size:.72em;letter-spacing:.3em;color:var(--ouro);margin-right:.6em}
-.fala .quem.voce{color:var(--holo)}
+/* Legenda em terminal */
+.fala{grid-area:fala;margin:0 auto;width:min(900px,100%);min-height:3.4em;font-size:clamp(1.05rem,2vw,1.4rem);line-height:1.4;color:var(--holo-forte);font-weight:500}
+.fala .quem{font-family:var(--mono);font-size:.7em;font-weight:500;color:var(--ouro);margin-right:.8em}
+.fala .quem::after{content:" ›";color:var(--holo-fraco)}
+.fala .quem.voce{color:#FFC7A8}
 .fala .cur{display:inline-block;width:.55em;height:1.05em;vertical-align:-.15em;background:var(--holo-forte);margin-left:2px;animation:pisca 1s steps(1) infinite}
 @keyframes pisca{50%{opacity:0}}
 
 /* Linha de comando */
 .cmd{grid-area:cmd;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;width:min(900px,100%);margin:0 auto}
-.campo{flex:1 1 280px;min-width:0;display:flex;align-items:center;gap:10px;border:1px solid var(--holo-fraco);background:rgba(8,32,52,.5);padding:0 14px;clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)}
+.campo{flex:1 1 280px;min-width:0;display:flex;align-items:center;gap:10px;border:1px solid var(--holo-fraco);background:rgba(6,30,40,.5);padding:0 14px;clip-path:polygon(0 0,100% 0,100% 100%,8px 100%,0 calc(100% - 8px))}
 .campo:focus-within{border-color:var(--holo)}
-.campo span{font-family:var(--display);color:var(--ouro);font-weight:700}
-#ask{flex:1;min-width:0;background:transparent;border:0;color:var(--holo-forte);font:inherit;font-size:1.1rem;font-weight:600;padding:12px 0;outline:none}
+.campo span{font-family:var(--mono);font-size:.82rem;color:var(--ouro);white-space:nowrap}
+#ask{flex:1;min-width:0;background:transparent;border:0;color:var(--holo-forte);font:inherit;font-size:1.05rem;font-weight:500;padding:12px 0;outline:none}
 #ask::placeholder{color:var(--holo-fraco)}
-.btn{font-family:var(--display);font-weight:600;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--holo-forte);background:rgba(70,210,255,.08);border:1px solid var(--holo);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
-.btn:hover{background:rgba(70,210,255,.2)}
+.btn{font-family:var(--display);font-weight:600;font-size:.88rem;letter-spacing:.06em;padding:12px 20px;cursor:pointer;color:var(--holo-forte);background:rgba(79,224,234,.08);border:1px solid var(--holo);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.btn:hover{background:rgba(79,224,234,.2)}
 .btn:focus-visible{outline:2px solid var(--ouro);outline-offset:-4px}
 .btn.prim{background:var(--holo);color:var(--vazio)}
 #mic[aria-pressed="true"]{background:var(--ouro);border-color:var(--ouro);color:var(--vazio)}
 
+@media (max-width:1200px){.coord{display:none}}
 @media (max-width:900px){
   .hud{grid-template-columns:1fr 1fr;grid-template-areas:"topo topo" "centro centro" "fala fala" "esq dir" "cmd cmd"}
   #reator{width:min(78vw,380px)}
+  .rota{order:3;flex-basis:100%;max-width:none}
 }
 @media (max-width:520px){
   .hud{grid-template-columns:1fr;grid-template-areas:"topo" "centro" "fala" "esq" "dir" "cmd"}
   .tele{gap:14px}.btn{flex:1 1 auto}.canto{display:none}
+  .campo span{display:none}
 }
 @media (prefers-reduced-motion:reduce){.fala .cur{animation:none}*{transition:none!important}}
 </style>
@@ -113,11 +141,19 @@ body.projetando #reator{opacity:.28;transform:scale(.92)}
 </head>
 <body>
 <i class="canto a"></i><i class="canto b"></i><i class="canto c"></i><i class="canto d"></i>
+<span class="coord rec" aria-hidden="true">08°03′S 34°52′W</span><span class="coord yvr" aria-hidden="true">49°17′N 123°07′W</span>
 <div class="hud">
   <header class="topo">
-    <div class="marca">J.A.R.V.I.S.<small>Assistente pessoal · Pedro</small></div>
+    <div class="marca">
+      <svg class="selo" viewBox="0 0 42 46" aria-hidden="true"><path d="M21 1.5 40 12v22L21 44.5 2 34V12z"/><text x="21" y="27">P</text><text class="mk" x="21" y="37">23</text></svg>
+      <div><b>PEDRO</b><small>central pessoal</small></div>
+    </div>
+    <div class="rota" id="rota" role="group" aria-label="Contagem para a mudança para Vancouver">
+      <div class="ponta"><span>Recife</span><b id="hora">--:--:--</b></div>
+      <div class="trilho"><i class="nave"></i><em id="dias">--</em></div>
+      <div class="ponta fim"><span>Vancouver</span><b id="yvr">--:--</b></div>
+    </div>
     <div class="tele">
-      <div><span>Hora</span><b id="hora">--:--:--</b></div>
       <div><span>Data</span><b id="data">--.--.----</b></div>
       <div><span>Local</span><b id="local">--</b></div>
       <div><span>Externa</span><b id="externa">-- °C</b></div>
@@ -134,7 +170,7 @@ body.projetando #reator{opacity:.28;transform:scale(.92)}
   <p class="fala" id="fala" aria-live="polite"></p>
 
   <div class="cmd">
-    <label class="campo"><span>›</span><input id="ask" placeholder="Pergunte ao Jarvis" autocomplete="off" aria-label="Pergunte ao Jarvis"></label>
+    <label class="campo"><span>pedro@central ~ %</span><input id="ask" placeholder="Pergunte ao Jarvis" autocomplete="off" aria-label="Pergunte ao Jarvis"></label>
     <button class="btn prim" id="go">Briefing</button>
     <button class="btn" id="mic" aria-pressed="false">Microfone</button>
   </div>
@@ -148,6 +184,8 @@ let state = 'espera', pulse = 0;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 function mk(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 const frag = html => { const t = document.createElement('div'); t.innerHTML = html || ''; return t; };
+// impressão digital curta de cada fonte (o canto do painel), estável entre recargas
+const fp = s => { let h = 0x811c9dc5; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return '0x' + (h >>> 0).toString(16).toUpperCase().padStart(8, '0').slice(0, 4); };
 
 // ---- Estados
 function setState(s){ state = s; document.body.dataset.s = s; $('modo').textContent = LABEL[s]; }
@@ -176,7 +214,7 @@ function renderPanels(){
     b.setAttribute('aria-label', `${s.rot}: ${s.val}. Ouvir de novo`);
     const box = mk('div');
     if (d.image){ const m = new Image(); m.className = 'mini'; m.alt = ''; m.referrerPolicy = 'no-referrer'; m.onerror = () => m.remove(); m.src = d.image; box.append(m); }
-    box.append(mk('span', 'rot', s.rot), mk('span', 'cod', 'MOD-' + String(i + 1).padStart(2, '0')), mk('span', 'val', s.val));
+    box.append(mk('span', 'rot', s.rot), mk('span', 'cod', fp(d.id)), mk('span', 'val', s.val));
     if (s.det && !news) box.append(mk('span', 'det', s.det));
     b.append(box);
     b.onclick = () => peek(d);
@@ -206,7 +244,7 @@ function project(d){
   const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer';
   im.onerror = () => p.querySelector('.tela').remove(); im.src = d.image;
   p.querySelector('.tela').prepend(im);
-  const r = p.querySelectorAll('.rot span'); r[0].textContent = s.rot; r[1].textContent = 'MOD-' + String(i + 1).padStart(2, '0');
+  const r = p.querySelectorAll('.rot span'); r[0].textContent = s.rot; r[1].textContent = fp(d.id);
   p.querySelector('h2').textContent = s.val;
   document.querySelector('.centro').append(p); document.body.classList.add('projetando');
   if (matchMedia('(max-width: 900px)').matches) document.querySelector('.centro').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'center'});
@@ -236,7 +274,7 @@ function line(who, text, cls){
   typing++;
   const f = $('fala'); f.textContent = '';
   const t = mk('span', '', text || '');
-  f.append(mk('span', 'quem ' + (cls || ''), who), t, mk('span', 'cur'));
+  f.append(mk('span', 'quem ' + (cls || ''), who === 'VOCÊ' ? 'pedro' : who.toLowerCase()), t, mk('span', 'cur'));
   return t;
 }
 async function type(text, ms){
@@ -436,15 +474,33 @@ $('ask').onkeydown = e => {
 
 // ---- Ouvir: escuta contínua com a palavra "Jarvis" fica em /static/wake.js
 
-// ---- Reator arc (canvas)
+// ---- Globo (canvas): a Terra em linhas, com a rota Recife → Vancouver e o pulso da voz em volta
 const cv = $('reator'), ctx = cv.getContext('2d');
-let t = 0, amp = 0, sweep = 0;
+let t = 0, amp = 0, sweep = 0, rotaP = 0; // rotaP: quanto da contagem até a mudança já passou (o relógio atualiza)
 const BARS = Array.from({length:72}, () => Math.random());
+// anel de cifra: a assinatura do Pedro gira em volta; vira hex embaralhado enquanto processa e se decifra ao terminar
+const ASSINATURA = 'PEDRO · REC 08°03′S 34°52′W → YVR 49°17′N 123°07′W · ', HEX = '0123456789ABCDEF';
+const cifra = [...ASSINATURA];
+const RAD = Math.PI / 180, REC = [-8.05, -34.9], YVR = [49.28, -123.12];
+const vec = ([la, lo]) => [Math.cos(la * RAD) * Math.sin(lo * RAD), Math.sin(la * RAD), Math.cos(la * RAD) * Math.cos(lo * RAD)];
+const ROTA = (() => { // arco de grande círculo, levantado do chão como uma rota de voo
+  const a = vec(REC), b = vec(YVR), om = Math.acos(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+  return Array.from({length:65}, (_, i) => {
+    const f = i / 64, s1 = Math.sin((1 - f) * om) / Math.sin(om), s2 = Math.sin(f * om) / Math.sin(om), h = 1 + .14 * Math.sin(Math.PI * f);
+    return [0, 1, 2].map(k => (a[k] * s1 + b[k] * s2) * h);
+  });
+})();
+const view = {l0: 0, la0: 22 * RAD};
+function girar([x, y, z]){ // gira o globo para a câmera: longitude l0 e latitude la0 ficam no centro
+  const cl = Math.cos(view.l0), sl = Math.sin(view.l0), ct = Math.cos(view.la0), st = Math.sin(view.la0);
+  const x1 = x * cl - z * sl, z1 = x * sl + z * cl;
+  return [x1, y * ct - z1 * st, y * st + z1 * ct];
+}
+const visivel = ([x, y, z]) => z > 0 || x * x + y * y > 1; // atrás do globo fica escondido
 function resize(){ const r = devicePixelRatio || 1, s = cv.clientWidth; cv.width = cv.height = s * r; ctx.setTransform(r,0,0,r,0,0); }
 addEventListener('resize', resize); resize();
-function arc(c, r, a0, a1, w, col, blur){ ctx.beginPath(); ctx.arc(c, c, r, a0, a1); ctx.lineWidth = w; ctx.strokeStyle = col; ctx.shadowBlur = blur || 0; ctx.stroke(); }
 function draw(){
-  const s = cv.clientWidth, c = s / 2, R = c * .96;
+  const s = cv.clientWidth, c = s / 2, R = c * .96, G = R * .64;
   if (live){ // volume real da voz
     analyser.getByteTimeDomainData(buf);
     let sum = 0; for (const v of buf){ const x = (v - 128) / 128; sum += x * x; }
@@ -456,79 +512,110 @@ function draw(){
   const goal = {espera:.12, ouvindo:.35, atento:.42, pensando:.3, falando:.45 + pulse * .55}[state] ?? .35; // estado novo sem entrada não pode virar NaN
   amp += (goal - amp) * .1; pulse *= .92;
   t += reduce ? 0 : {espera:.004, ouvindo:.008, atento:.014, pensando:.03, falando:.012}[state] ?? .008;
-  const H = state === 'falando' ? '255,184,48' : '70,210,255';
+  const H = state === 'falando' ? '227,163,94' : '79,224,234';
+  const P = v => { const [x, y, z] = girar(v); return [c + x * G, c - y * G, z, x, y]; };
+  view.l0 = (-79 + Math.sin(t * .35) * 32) * RAD; // balança entre Recife e Vancouver
   ctx.clearRect(0, 0, s, s);
-  ctx.shadowColor = `rgba(${H},.9)`;
+  ctx.shadowColor = `rgba(${H},.9)`; ctx.shadowBlur = 0;
 
-  // anel externo de marcações
-  ctx.save(); ctx.translate(c, c); ctx.rotate(t * .6);
-  for (let i = 0; i < 120; i++){
-    const a = i / 120 * Math.PI * 2, big = i % 10 === 0;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R);
-    ctx.lineTo(Math.cos(a) * (R - (big ? 14 : 6)), Math.sin(a) * (R - (big ? 14 : 6)));
-    ctx.lineWidth = big ? 2 : 1; ctx.strokeStyle = `rgba(70,210,255,${big ? .8 : .35})`; ctx.shadowBlur = 0; ctx.stroke();
+  // anel de cifra com a assinatura
+  ctx.save(); ctx.translate(c, c); ctx.rotate(t * .25);
+  ctx.font = `500 ${Math.max(7, R * 2 * Math.PI * .95 / cifra.length * .6)}px "IBM Plex Mono", ui-monospace, monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < cifra.length; i++){
+    if (reduce) cifra[i] = ASSINATURA[i];
+    else if (state === 'pensando'){ if (Math.random() < .3) cifra[i] = HEX[Math.random() * 16 | 0]; }
+    else if (cifra[i] !== ASSINATURA[i] && Math.random() < .08) cifra[i] = ASSINATURA[i];
+    ctx.save(); ctx.rotate(i / cifra.length * Math.PI * 2); ctx.translate(0, -R * .95);
+    ctx.fillStyle = cifra[i] === ASSINATURA[i] ? `rgba(${H},.85)` : 'rgba(79,224,234,.4)';
+    ctx.fillText(cifra[i], 0, 0); ctx.restore();
+  }
+  for (let i = 0; i < 120; i++){ // marcações finas por dentro do anel
+    const a = i / 120 * Math.PI * 2, big = i % 10 === 0, r0 = R * .9;
+    ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+    ctx.lineTo(Math.cos(a) * (r0 - (big ? 8 : 3)), Math.sin(a) * (r0 - (big ? 8 : 3)));
+    ctx.lineWidth = big ? 1.5 : 1; ctx.strokeStyle = `rgba(79,224,234,${big ? .7 : .3})`; ctx.stroke();
   }
   ctx.restore();
 
-  // arcos segmentados girando em sentidos opostos
-  for (let i = 0; i < 6; i++){ const a = -t * 1.4 + i * Math.PI / 3; arc(c, R * .86, a, a + Math.PI / 4.2, 3, 'rgba(70,210,255,.75)', 8); }
-  for (let i = 0; i < 3; i++){ const a = t * 2.2 + i * Math.PI * 2 / 3; arc(c, R * .8, a, a + Math.PI / 2.4, 1.5, 'rgba(184,241,255,.5)'); }
-
-  // barras de espectro (voz)
+  // pulso da voz: barras de espectro em volta do globo
   ctx.save(); ctx.translate(c, c);
   for (let i = 0; i < BARS.length; i++){
     if (!reduce && Math.random() < .25) BARS[i] = Math.random();
-    const a = i / BARS.length * Math.PI * 2 + t * .3, r0 = R * .62, len = R * (.02 + BARS[i] * amp * .14);
+    const a = i / BARS.length * Math.PI * 2 + t * .3, r0 = G * 1.1, len = R * (.02 + BARS[i] * amp * .14);
     ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * (r0 + len), Math.sin(a) * (r0 + len));
     ctx.lineWidth = 2.2; ctx.strokeStyle = `rgba(${H},.85)`; ctx.shadowBlur = 6; ctx.stroke();
   }
-  ctx.restore();
+  ctx.restore(); ctx.shadowBlur = 0;
 
-  // varredura de radar enquanto processa
+  // corpo do globo: brilha mais forte com a voz
+  const glow = ctx.createRadialGradient(c - G * .3, c - G * .35, 0, c, c, G);
+  glow.addColorStop(0, `rgba(${H},${.1 + amp * .32})`); glow.addColorStop(1, 'rgba(3,19,28,.7)');
+  ctx.beginPath(); ctx.arc(c, c, G, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(${H},${.5 + amp * .4})`; ctx.shadowBlur = 12; ctx.stroke(); ctx.shadowBlur = 0;
+
+  // meridianos e paralelos: frente nítida, verso apagado
+  const frente = new Path2D(), verso = new Path2D();
+  const linha = pts => { for (let i = 1; i < pts.length; i++){ const a = P(pts[i - 1]), b = P(pts[i]), p = a[2] > 0 && b[2] > 0 ? frente : verso; p.moveTo(a[0], a[1]); p.lineTo(b[0], b[1]); } };
+  for (let lo = -180; lo < 180; lo += 20) linha(Array.from({length:31}, (_, i) => vec([-90 + i * 6, lo])));
+  for (let la = -60; la <= 60; la += 20) linha(Array.from({length:61}, (_, i) => vec([la, -180 + i * 6])));
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(79,224,234,.07)'; ctx.stroke(verso);
+  ctx.strokeStyle = 'rgba(79,224,234,.3)'; ctx.stroke(frente);
+
+  // varredura de latitude enquanto processa
   if (state === 'pensando'){
-    sweep += reduce ? 0 : .07;
-    const g = ctx.createConicGradient(sweep, c, c);
-    g.addColorStop(0, 'rgba(70,210,255,.35)'); g.addColorStop(.12, 'rgba(70,210,255,0)'); g.addColorStop(1, 'rgba(70,210,255,0)');
-    ctx.beginPath(); ctx.arc(c, c, R * .78, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+    sweep += reduce ? 0 : .05;
+    const la = Math.sin(sweep) * 75, scan = new Path2D(), pts = Array.from({length:61}, (_, i) => P(vec([la, -180 + i * 6])));
+    for (let i = 1; i < pts.length; i++) if (pts[i - 1][2] > 0 && pts[i][2] > 0){ scan.moveTo(pts[i - 1][0], pts[i - 1][1]); scan.lineTo(pts[i][0], pts[i][1]); }
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(210,251,255,.8)'; ctx.shadowBlur = 10; ctx.stroke(scan); ctx.shadowBlur = 0;
   }
 
-  // carcaça e bobinas do reator
-  arc(c, R * .58, 0, Math.PI * 2, 1.5, 'rgba(70,210,255,.6)');
-  arc(c, R * .4, 0, Math.PI * 2, 1, 'rgba(70,210,255,.4)');
-  ctx.save(); ctx.translate(c, c);
-  for (let i = 0; i < 10; i++){
-    ctx.rotate(Math.PI / 5);
-    ctx.beginPath(); ctx.moveTo(-R * .06, -R * .55); ctx.lineTo(R * .06, -R * .55); ctx.lineTo(R * .04, -R * .43); ctx.lineTo(-R * .04, -R * .43); ctx.closePath();
-    ctx.fillStyle = `rgba(${H},${.25 + amp * .6})`; ctx.shadowBlur = 14; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = `rgba(${H},.9)`; ctx.stroke();
+  // rota Recife → Vancouver, do coral ao azul, e a marca de quanto já foi da contagem
+  const rp = ROTA.map(P);
+  for (let i = 1; i < rp.length; i++){
+    const a = rp[i - 1], b = rp[i]; if (!visivel(a.slice(3).concat(a[2])) || !visivel([b[3], b[4], b[2]])) continue;
+    const f = i / rp.length, cor = [255 + (79 - 255) * f, 142 + (224 - 142) * f, 98 + (234 - 98) * f].map(Math.round).join(',');
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+    ctx.lineWidth = 2; ctx.strokeStyle = `rgba(${cor},${i / rp.length <= rotaP ? 1 : .45})`; ctx.shadowColor = `rgba(${cor},.9)`; ctx.shadowBlur = 8; ctx.stroke();
   }
-  // triângulo central (Mark VI)
-  const tr = R * (.3 + amp * .03);
-  ctx.beginPath();
-  for (let i = 0; i < 3; i++){ const a = -Math.PI / 2 + i * Math.PI * 2 / 3; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * tr, Math.sin(a) * tr); }
-  ctx.closePath(); ctx.lineWidth = 4; ctx.strokeStyle = `rgba(${H},1)`; ctx.shadowBlur = 24; ctx.stroke();
-  ctx.restore();
+  ctx.shadowBlur = 0; ctx.shadowColor = `rgba(${H},.9)`;
+  const nv = rp[Math.round(rotaP * 64)];
+  if (visivel([nv[3], nv[4], nv[2]])){
+    ctx.save(); ctx.translate(nv[0], nv[1]); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#020B12'; ctx.strokeStyle = 'rgba(210,251,255,1)'; ctx.lineWidth = 2; ctx.shadowBlur = 10;
+    ctx.fillRect(-4, -4, 8, 8); ctx.strokeRect(-4, -4, 8, 8); ctx.restore(); ctx.shadowBlur = 0;
+  }
 
-  // núcleo
-  const core = ctx.createRadialGradient(c, c, 0, c, c, R * .36);
-  core.addColorStop(0, `rgba(255,255,255,${.75 + amp * .25})`);
-  core.addColorStop(.25, `rgba(${H},${.5 + amp * .4})`);
-  core.addColorStop(1, `rgba(${H},0)`);
-  ctx.shadowBlur = 0; ctx.beginPath(); ctx.arc(c, c, R * .36, 0, Math.PI * 2); ctx.fillStyle = core; ctx.fill();
+  // as duas cidades: pulsam mais quando o Jarvis está ouvindo
+  const ouvindo = state === 'ouvindo' || state === 'atento';
+  ctx.font = `500 ${Math.max(9, R * .045)}px "IBM Plex Mono", ui-monospace, monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  [[REC, 'REC', '255,142,98'], [YVR, 'YVR', '79,224,234']].forEach(([ll, nome, cor], k) => {
+    const [x, y, z] = P(vec(ll)); if (z <= 0) return;
+    const fase = (t * (ouvindo ? 6 : 2.5) + k * .5) % 1;
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fillStyle = `rgb(${cor})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 4 + fase * (ouvindo ? 16 : 10), 0, Math.PI * 2); ctx.lineWidth = 1.2; ctx.strokeStyle = `rgba(${cor},${(1 - fase) * .8})`; ctx.stroke();
+    ctx.fillStyle = `rgba(${cor},.95)`; ctx.fillText(nome, x + 9, y - 8);
+  });
 
   requestAnimationFrame(draw);
 }
 draw();
 
-// ---- Relógio
+// ---- Relógios de Recife e Vancouver e a contagem para a mudança
+const PARTIDA = new Date('2026-12-04T00:00:00-03:00'), INICIO = new Date('2026-01-01T00:00:00-03:00');
 function tick(){ const n = new Date();
-  $('hora').textContent = n.toLocaleTimeString('pt-BR');
-  $('data').textContent = n.toLocaleDateString('pt-BR').replace(/\//g, '.'); }
+  $('hora').textContent = n.toLocaleTimeString('pt-BR', {timeZone: 'America/Recife'});
+  $('yvr').textContent = n.toLocaleTimeString('pt-BR', {timeZone: 'America/Vancouver', hour: '2-digit', minute: '2-digit'});
+  $('data').textContent = n.toLocaleDateString('pt-BR').replace(/\//g, '.');
+  const dias = Math.ceil((PARTIDA - n) / 864e5);
+  rotaP = Math.min(1, Math.max(0, (n - INICIO) / (PARTIDA - INICIO)));
+  $('rota').style.setProperty('--p', rotaP.toFixed(4));
+  $('dias').textContent = dias > 1 ? `faltam ${dias} dias` : dias === 1 ? 'é amanhã' : 'em Vancouver'; }
 setInterval(tick, 1000); tick();
-line('JARVIS', 'Todos os sistemas operacionais, senhor. Diga “Jarvis, bom dia” ou toque em Briefing.');
+line('JARVIS', 'Canal seguro estabelecido, senhor. Diga “Jarvis, bom dia” ou toque em Briefing.');
 </script>
 <script src="/static/wake.js?v=2"></script>
 <script src="/static/lembretes.js?v=2"></script>
+<script src="/static/autobriefing.js?v=1"></script>
 </body>
 </html>
