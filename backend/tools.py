@@ -159,7 +159,7 @@ TOOLS.update(mac_control.TOOLS)  # Spotify e brilho da tela
 TOOLS.update(reminders.TOOLS)  # lembretes e timers falados
 TOOLS.update(dev_tools.TOOLS)  # GitHub (gh CLI) e VS Code
 TOOLS.update(repo_tools.TOOLS)  # resumo de repositórios e commits (somente leitura)
-TOOLS.update(alerts.TOOLS)  # avisar_celular (Pushover/ntfy)
+TOOLS.update(alerts.TOOLS)  # avisar_celular (ntfy)
 
 
 def schemas(active: dict) -> list:

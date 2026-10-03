@@ -66,7 +66,7 @@ app.include_router(memory_api.router)
 app.include_router(google_data.router)  # /google/conectar
 app.include_router(reminders_api.router)  # /api/lembretes e o laço que dispara os alertas
 app.include_router(autobriefing.router)  # briefing sozinho de manhã (ao ligar/acordar o Mac)
-app.include_router(alerts.router)  # alertas urgentes no celular (Pushover/ntfy) e e-mails vigiados
+app.include_router(alerts.router)  # alertas urgentes no celular (ntfy) e e-mails vigiados
 
 
 def _wicon(code: int) -> str:

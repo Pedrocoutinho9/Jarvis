@@ -1,14 +1,12 @@
-"""Alertas urgentes no celular: Pushover (modo de emergência) ou, como alternativa, ntfy.
+"""Alertas urgentes no celular via ntfy.
 
 O que conta como urgente:
   1. o pedido direto "me avisa no celular ..." (ferramenta avisar_celular);
   2. lembrete criado como urgente/importante (criar_lembrete com urgente=sim, ou com "urgente" no texto);
   3. e-mail novo de um remetente listado em ALERT_EMAIL_SENDERS (conferido a cada ALERT_EMAIL_INTERVAL s).
 
-Pushover com prioridade 2 toca mesmo no silencioso e repete a cada ALERT_RETRY s até o usuário confirmar
-no app (desiste depois de ALERT_EXPIRE s). Configuração no .env:
-  PUSHOVER_USER_KEY, PUSHOVER_APP_TOKEN   -> Pushover (preferido)
-  NTFY_TOPIC (e NTFY_SERVER opcional)     -> ntfy, usado só se o Pushover não estiver configurado
+Alerta urgente vai com prioridade máxima (5) no ntfy. Configuração no .env:
+  NTFY_TOPIC (e NTFY_SERVER opcional)
 O conteúdo de e-mail é de terceiros: só vira texto do alerta, nunca passa pelo modelo nem dispara outra ação.
 """
 from __future__ import annotations
@@ -25,7 +23,6 @@ from fastapi import APIRouter
 from .memory import DATA_DIR
 
 SEEN_FILE = DATA_DIR / "alertas_emails_vistos.json"
-PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
 _task = {}
 
 
@@ -34,8 +31,6 @@ def _env(name: str, default: str = "") -> str:
 
 
 def backend() -> str:
-    if _env("PUSHOVER_USER_KEY") and _env("PUSHOVER_APP_TOKEN"):
-        return "pushover"
     if _env("NTFY_TOPIC"):
         return "ntfy"
     return ""
@@ -51,29 +46,18 @@ async def push(title: str, message: str, urgent: bool = True) -> str:
     kind = backend()
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            if kind == "pushover":
-                data = {"token": _env("PUSHOVER_APP_TOKEN"), "user": _env("PUSHOVER_USER_KEY"),
-                        "title": title, "message": message, "priority": 2 if urgent else 0}
-                if urgent:
-                    data.update(retry=max(30, int(_env("ALERT_RETRY", "60"))),
-                                expire=min(10800, int(_env("ALERT_EXPIRE", "3600"))), sound="persistent")
-                r = await client.post(PUSHOVER_URL, data=data)
-                if r.status_code != 200:
-                    errs = "; ".join(r.json().get("errors", [])) if "json" in r.headers.get("content-type", "") else ""
-                    return f"O Pushover recusou o alerta ({r.status_code}{': ' + errs if errs else ''})."
-            elif kind == "ntfy":
+            if kind == "ntfy":
                 url = f"{_env('NTFY_SERVER', 'https://ntfy.sh').rstrip('/')}/{_env('NTFY_TOPIC')}"
                 headers = {"Title": title.encode("utf-8"), "Priority": "5" if urgent else "3", "Tags": "rotating_light"}
                 r = await client.post(url, content=message.encode("utf-8"), headers=headers)
                 if r.status_code >= 300:
                     return f"O ntfy recusou o alerta ({r.status_code})."
             else:
-                return ("Alerta no celular não configurado: faltam PUSHOVER_USER_KEY e PUSHOVER_APP_TOKEN "
-                        "(ou NTFY_TOPIC) no .env.")
+                return "Alerta no celular não configurado: falta NTFY_TOPIC no .env."
     except (httpx.HTTPError, ValueError) as e:
         return f"Não consegui mandar o alerta ({type(e).__name__})."
     print(f"[jarvis] alerta no celular ({kind}): {title}: {message}")
-    return f"Alerta enviado ao celular via {kind}{' (urgente: repete até confirmar)' if urgent and kind == 'pushover' else ''}."
+    return f"Alerta enviado ao celular via {kind}{' (urgente)' if urgent else ''}."
 
 
 # ---- lembretes urgentes (chamado por reminders.fire_due) ----
@@ -164,9 +148,8 @@ async def avisar_celular(mensagem: str, urgente="sim") -> str:
 
 TOOLS = {
     "avisar_celular": {"fn": avisar_celular, "efeito": True, "web": False,
-                       "desc": 'manda um alerta para o celular do usuário agora (Pushover: toca mesmo no silencioso '
-                               'e repete até ele confirmar). Use só quando o usuário pedir "me avisa no celular" '
+                       "desc": 'manda um alerta para o celular do usuário agora (via ntfy). Use só quando o usuário pedir "me avisa no celular" '
                                'ou algo claramente urgente. args: {"mensagem": "texto curto", "urgente": "sim"}',
                        "params": {"mensagem": "o aviso, curto e direto",
-                                  "urgente": "sim (toca e repete até confirmar) ou nao (notificação comum)"}},
+                                  "urgente": "sim (prioridade máxima) ou nao (notificação comum)"}},
 }
