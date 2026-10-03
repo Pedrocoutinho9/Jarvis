@@ -17,7 +17,7 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import google_data
+from . import alerts, google_data
 from .memory import DATA_DIR
 
 FILE = DATA_DIR / "lembretes.json"
@@ -300,6 +300,8 @@ async def fire_due() -> list:
         print(f"[jarvis] alerta: {text}")
         _publish({"type": "alerta", "id": i["id"], "tipo": i["tipo"], "texto": i["texto"], "say": text})
         await _notify("Jarvis", text)
+        if alerts.is_urgent(i) and late <= MAX_LATE_H * 3600:  # urgente: também toca no celular
+            print(f"[jarvis] {await alerts.push('Jarvis: lembrete urgente', text)}")
     return due
 
 
@@ -314,13 +316,16 @@ async def loop() -> None:
 
 
 # ---- ferramentas expostas ao modelo (registradas em tools.TOOLS) ----
-async def criar_lembrete(texto: str, quando: str, agenda="nao") -> str:
+async def criar_lembrete(texto: str, quando: str, agenda="nao", urgente="nao") -> str:
     dt = parse_when(quando)
     if not dt:
         return f"Não entendi o horário '{quando}'. Peça ao usuário um horário claro (ex.: 18h, amanhã 9h)."
     if dt <= now():
         return "Esse horário já passou. Confirme com o usuário o dia e a hora."
     item = add(texto or "lembrete", dt)
+    if _norm(urgente) in ("sim", "s", "true", "1", "yes"):
+        _set(item["id"], urgente=True)
+        item["urgente"] = True
     out = f"Lembrete criado: {_describe(item)}. Fuso: {TZ.key}."
     if _norm(agenda) in ("sim", "s", "true", "1", "yes"):
         out += " " + await _to_calendar(item)
@@ -358,6 +363,7 @@ TOOLS = {
                                'não a ferramenta lembrar (memória). '
                                'args: {"texto": "ligar para a mãe", "quando": "18h"}',
                        "params": {"agenda": "exatamente sim (só se o usuário pediu para pôr na agenda) ou nao",
+                                  "urgente": "sim se o usuário disse que é urgente/importante ou pediu aviso no celular (toca no celular na hora), senão nao",
                                   "texto": "do que lembrar, curto, sem a palavra lembrete",
                                   "quando": "horário como o usuário disse: 18h, 18:30, amanhã 9h, sexta 14h, "
                                             "25/12 10h, em 20 minutos; ou ISO AAAA-MM-DDTHH:MM no horário local"}},

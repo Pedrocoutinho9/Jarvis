@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from . import google_data, llm, memory, memory_api, reminders_api, tools
+from . import alerts, autobriefing, dev_tools, google_data, llm, memory, memory_api, reminders_api, tools
 
 load_dotenv()
 
@@ -65,6 +65,8 @@ app = FastAPI(title="Jarvis")
 app.include_router(memory_api.router)
 app.include_router(google_data.router)  # /google/conectar
 app.include_router(reminders_api.router)  # /api/lembretes e o laço que dispara os alertas
+app.include_router(autobriefing.router)  # briefing sozinho de manhã (ao ligar/acordar o Mac)
+app.include_router(alerts.router)  # alertas urgentes no celular (Pushover/ntfy) e e-mails vigiados
 
 
 def _wicon(code: int) -> str:
@@ -341,6 +343,7 @@ def _parse_action(found, allowed: dict):
 async def answer_stream(msgs: list):
     """Laço do agente em streaming: devolve frases prontas para falar assim que o modelo as escreve.
     Eventos: {"type": "sentence", "text"}, {"type": "action", ...} e por fim {"type": "done", "reply", "actions"}."""
+    dev_tools.begin_turn(msgs[-1]["content"])  # confirmações faladas ("sim") valem só no turno seguinte
     market = await market_data()
     allowed = tools.active_tools(SEARCH_ON, PC_ON)
     native = llm.native_tools() and bool(allowed)

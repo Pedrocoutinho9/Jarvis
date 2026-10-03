@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from . import google_data, mac_control, memory, reminders, web
+from . import alerts, dev_tools, google_data, mac_control, memory, reminders, repo_tools, web
 
 APP_DIRS = [
     Path("/Applications"), Path("/Applications/Utilities"),
@@ -157,6 +157,9 @@ TOOLS.update(memory.TOOLS)  # lembrar / esquecer
 TOOLS.update(google_data.TOOLS)  # ver_agenda / ver_emails (somente leitura)
 TOOLS.update(mac_control.TOOLS)  # Spotify e brilho da tela
 TOOLS.update(reminders.TOOLS)  # lembretes e timers falados
+TOOLS.update(dev_tools.TOOLS)  # GitHub (gh CLI) e VS Code
+TOOLS.update(repo_tools.TOOLS)  # resumo de repositórios e commits (somente leitura)
+TOOLS.update(alerts.TOOLS)  # avisar_celular (Pushover/ntfy)
 
 
 def schemas(active: dict) -> list:
@@ -184,7 +187,7 @@ async def run_tool(nome: str, args, allowed: dict, tainted: bool, seen_urls: set
     # defesa contra injeção: depois de ler a web, só abre links que apareceram nos resultados
     if tainted and t.get("memoria"):  # texto da web não pode plantar "lembranças"
         return "Bloqueado: não mexo na memória depois de ler conteúdo da web na mesma pergunta.", False
-    if tainted and t["efeito"] and not (nome == "abrir_url" and str(args.get("url", "")) in seen_urls):
+    if tainted and t["efeito"] and not t.get("leitura") and not (nome == "abrir_url" and str(args.get("url", "")) in seen_urls):
         return ("Bloqueado por segurança: depois de ler conteúdo da web na mesma pergunta, só abro links "
                 "que apareceram nos resultados. Peça a ação diretamente ao usuário."), False
     try:
